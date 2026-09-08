@@ -1,0 +1,16 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+/logs/*.log
+
+# Runtime storage (attachments live outside the webroot in production;
+# ignore any local copies too)
+/storage/
+/uploads/
+
+# Node toolchain (Tailwind build)
+node_modules/
+package-lock.json
