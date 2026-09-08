@@ -4,15 +4,12 @@
  * CLI tool — Register a new sender app.
  *
  * Usage:
- *   php register_app.php "My App Name"
+ *   php bin/register_app.php "My App Name"
  *
  * Outputs the generated app_key that the app must use for API calls.
  */
 
-require_once __DIR__ . '/Env.php';
-require_once __DIR__ . '/Db.php';
-
-Env::load(__DIR__ . '/.env');
+require_once __DIR__ . '/../src/bootstrap.php';
 
 if (php_sapi_name() !== 'cli') {
     http_response_code(403);
@@ -23,7 +20,7 @@ if (php_sapi_name() !== 'cli') {
 $appName = $argv[1] ?? null;
 
 if ($appName === null || trim($appName) === '') {
-    fwrite(STDERR, "Usage: php register_app.php \"App Name\"\n");
+    fwrite(STDERR, "Usage: php bin/register_app.php \"App Name\"\n");
     exit(1);
 }
 

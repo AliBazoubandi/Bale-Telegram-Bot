@@ -4,19 +4,23 @@
  * Database Setup & Migration Script for Windows / Native Environments
  *
  * Runs schema.sql and all migrations automatically.
- * Usage: php setup_db.php
+ * Usage: php bin/setup_db.php
  */
 
-require_once __DIR__ . '/Env.php';
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    echo "Forbidden: CLI access only\n";
+    exit(1);
+}
 
-$envPath = __DIR__ . '/.env';
+require_once __DIR__ . '/../src/bootstrap.php';
+
+$envPath = ROOT_PATH . '/.env';
 if (!file_exists($envPath)) {
     echo "\n[ERROR] .env file not found!\n";
     echo "Please copy .env.example to .env and configure your DB_HOST, DB_USER, DB_PASS, and DB_NAME.\n\n";
     exit(1);
 }
-
-Env::load($envPath);
 
 $host = getenv('DB_HOST') ?: '127.0.0.1';
 $user = getenv('DB_USER') ?: 'root';
@@ -88,15 +92,22 @@ function executeSqlFile(mysqli $db, string $filePath, string $description): bool
 }
 
 // 1. Run main schema
-executeSqlFile($conn, __DIR__ . '/schema.sql', 'Initial Schema');
+executeSqlFile($conn, ROOT_PATH . '/database/schema.sql', 'Initial Schema');
 
 // 2. Run migrations
-executeSqlFile($conn, __DIR__ . '/migrate_admin.sql', 'Admin Migration');
-executeSqlFile($conn, __DIR__ . '/migrate_attachments.sql', 'Attachments Migration');
+executeSqlFile($conn, ROOT_PATH . '/database/migrate_admin.sql', 'Admin Migration');
+executeSqlFile($conn, ROOT_PATH . '/database/migrate_attachments.sql', 'Attachments Migration');
 
 // 3. Verify tables
 echo "\nVerifying database tables:\n";
-$tables = ['apps' => 'sender_apps', 'contacts' => 'contacts', 'channels' => 'contact_channels', 'logs' => 'message_logs', 'admins' => 'admin_users'];
+$tables = [
+    'apps'       => 'sender_apps',
+    'contacts'   => 'contacts',
+    'channels'   => 'contact_channels',
+    'logs'       => 'message_logs',
+    'admins'     => 'admin_users',
+    'throttles'  => 'login_throttles',
+];
 foreach ($tables as $alias => $tableName) {
     $res = $conn->query("SHOW TABLES LIKE '{$tableName}'");
     $exists = ($res && $res->num_rows > 0);
@@ -108,12 +119,12 @@ $adminRes = $conn->query("SELECT COUNT(*) as cnt FROM admin_users");
 $adminCount = $adminRes ? (int) $adminRes->fetch_assoc()['cnt'] : 0;
 
 echo "\n========================================================\n";
-echo "[SUCCESS] Database initialization completed!\n";
 if ($adminCount === 0) {
-    echo "[NOTE] No admin users found. You can create one by running:\n";
-    echo "       php create_admin.php <username> <password> \"Display Name\"\n";
+    echo "[ACTION REQUIRED] Schema initialized, but ZERO administrators exist!\n";
+    echo "The system is NOT ready for use until you create an administrator.\n";
+    echo "Run the following command now to create your administrator account:\n\n";
+    echo "    php bin/create_admin.php <username> <password> \"<Display Name>\"\n";
 } else {
-    echo "[INFO] {$adminCount} admin user(s) configured.\n";
-    echo "       Default login: username=admin / password=123456 (if newly created)\n";
+    echo "[SUCCESS] Database initialization completed! ({$adminCount} administrator(s) configured)\n";
 }
 echo "========================================================\n\n";

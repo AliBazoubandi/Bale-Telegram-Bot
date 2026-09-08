@@ -1,7 +1,8 @@
 @echo off
 chcp 65001 >nul
 setlocal enabledelayedexpansion
-cd /d "%~dp0"
+cd /d "%~dp0.."
+set "PROJECT_DIR=%CD%"
 title SendMessageBots - Service Control Panel
 
 set SERVICE_NAME=SendMessageBots
@@ -9,14 +10,14 @@ set TASK_NAME=SendMessageBots_Server
 
 :: Read Port from .env or default to 8080
 set PORT=8080
-if exist "%~dp0.env" (
-    for /f "tokens=1,2 delims==" %%a in ('findstr /r "^APP_PORT=" "%~dp0.env"') do (
+if exist "%PROJECT_DIR%\.env" (
+    for /f "tokens=1,2 delims==" %%a in ('findstr /r "^APP_PORT=" "%PROJECT_DIR%\.env"') do (
         if "%%a"=="APP_PORT" if not "%%b"=="" set "PORT=%%b"
     )
 )
 
 :: Locate NSSM
-set NSSM_BIN=%~dp0tools\nssm.exe
+set NSSM_BIN=%PROJECT_DIR%\tools\nssm.exe
 if not exist "%NSSM_BIN%" (
     where nssm >nul 2>&1
     if %ERRORLEVEL% EQU 0 set NSSM_BIN=nssm
@@ -61,8 +62,8 @@ if exist "%NSSM_BIN%" (
 ) else (
     sc start %SERVICE_NAME% 2>nul || schtasks /Run /TN "%TASK_NAME%" 2>nul
 )
-if exist "%~dp0tools\run_hidden.vbs" (
-    wscript.exe "%~dp0tools\run_hidden.vbs"
+if exist "%PROJECT_DIR%\tools\run_hidden.vbs" (
+    wscript.exe "%PROJECT_DIR%\tools\run_hidden.vbs"
 )
 echo Service start requested.
 echo.
@@ -116,8 +117,8 @@ if exist "%NSSM_BIN%" (
 ) else (
     sc start %SERVICE_NAME% >nul 2>&1 || schtasks /Run /TN "%TASK_NAME%" >nul 2>&1
 )
-if exist "%~dp0tools\run_hidden.vbs" (
-    wscript.exe "%~dp0tools\run_hidden.vbs"
+if exist "%PROJECT_DIR%\tools\run_hidden.vbs" (
+    wscript.exe "%PROJECT_DIR%\tools\run_hidden.vbs"
 )
 exit /b
 
@@ -156,10 +157,10 @@ goto :menu
 
 :view_out_log
 echo.
-if exist "%~dp0logs\service_out.log" (
+if exist "%PROJECT_DIR%\logs\service_out.log" (
     echo Last 30 lines of logs\service_out.log:
     echo ----------------------------------------------------
-    powershell -Command "Get-Content -Path '%~dp0logs\service_out.log' -Tail 30"
+    powershell -Command "Get-Content -Path '%PROJECT_DIR%\logs\service_out.log' -Tail 30"
 ) else (
     echo [INFO] Log file logs\service_out.log does not exist yet.
 )
@@ -169,10 +170,10 @@ goto :menu
 
 :view_err_log
 echo.
-if exist "%~dp0logs\service_err.log" (
+if exist "%PROJECT_DIR%\logs\service_err.log" (
     echo Last 30 lines of logs\service_err.log:
     echo ----------------------------------------------------
-    powershell -Command "Get-Content -Path '%~dp0logs\service_err.log' -Tail 30"
+    powershell -Command "Get-Content -Path '%PROJECT_DIR%\logs\service_err.log' -Tail 30"
 ) else (
     echo [INFO] Log file logs\service_err.log does not exist yet.
 )
@@ -186,5 +187,5 @@ goto :menu
 
 :run_check
 echo.
-call check_env.bat
+call "%~dp0check_env.bat"
 goto :menu

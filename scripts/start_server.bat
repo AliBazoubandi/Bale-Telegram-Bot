@@ -1,13 +1,13 @@
 @echo off
 setlocal enabledelayedexpansion
-cd /d "%~dp0"
+cd /d "%~dp0.."
 title SendMessageBots - Web Server
 
 :: Read Port from argument, then .env, then default to 8080
 set PORT=%1
 if "%PORT%"=="" (
-    if exist "%~dp0.env" (
-        for /f "tokens=1,2 delims==" %%a in ('findstr /r "^APP_PORT=" "%~dp0.env"') do (
+    if exist "%~dp0..\.env" (
+        for /f "tokens=1,2 delims==" %%a in ('findstr /r "^APP_PORT=" "%~dp0..\.env"') do (
             if "%%a"=="APP_PORT" if not "%%b"=="" set "PORT=%%b"
         )
     )

@@ -1,14 +1,15 @@
 @echo off
 chcp 65001 >nul
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0.."
+set "PROJECT_DIR=%CD%"
 title SendMessageBots - Windows Service Uninstaller
 
 :: Auto-Request Administrator Privileges
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
 if %ERRORLEVEL% NEQ 0 (
     echo Requesting Administrator privileges...
-    powershell -Command "Start-Process cmd -ArgumentList '/c cd /d \"\"%~dp0\"\" && \"\"%~dpnx0\"\"' -Verb RunAs"
+    powershell -Command "Start-Process cmd -ArgumentList '/c cd /d \"\"%~dp0..\"\" && \"\"%~dpnx0\"\"' -Verb RunAs"
     exit /b
 )
 
@@ -22,7 +23,7 @@ set TASK_NAME=SendMessageBots_Server
 set PORT=8080
 
 :: 1. Remove NSSM Service
-set NSSM_BIN=%~dp0tools\nssm.exe
+set NSSM_BIN=%PROJECT_DIR%\tools\nssm.exe
 if not exist "%NSSM_BIN%" (
     where nssm >nul 2>&1
     if %ERRORLEVEL% EQU 0 set NSSM_BIN=nssm

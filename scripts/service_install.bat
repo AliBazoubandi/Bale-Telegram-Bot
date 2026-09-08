@@ -1,6 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
-cd /d "%~dp0"
+cd /d "%~dp0.."
+set "PROJECT_DIR=%CD%"
 title SendMessageBots - Windows Service Installer
 
 :: Ensure administrator privileges
@@ -14,7 +15,7 @@ if %ERRORLEVEL% NEQ 0 (
     echo  a background service or scheduled task in Windows.
     echo.
     echo  HOW TO RUN:
-    echo  1. Right-click on 'service_install.bat'
+    echo  1. Right-click on 'scripts\service_install.bat'
     echo  2. Select 'Run as administrator'
     echo ========================================================
     echo.
@@ -50,13 +51,13 @@ if not defined PHP_BIN (
 )
 
 :: Ensure directories exist
-if not exist "%~dp0logs" mkdir "%~dp0logs"
-if not exist "%~dp0tools" mkdir "%~dp0tools"
+if not exist "%PROJECT_DIR%\logs" mkdir "%PROJECT_DIR%\logs"
+if not exist "%PROJECT_DIR%\tools" mkdir "%PROJECT_DIR%\tools"
 
 :: Read Port from .env or default to 8080
 set PORT=8080
-if exist "%~dp0.env" (
-    for /f "tokens=1,2 delims==" %%a in ('findstr /r "^APP_PORT=" "%~dp0.env"') do (
+if exist "%PROJECT_DIR%\.env" (
+    for /f "tokens=1,2 delims==" %%a in ('findstr /r "^APP_PORT=" "%PROJECT_DIR%\.env"') do (
         if "%%a"=="APP_PORT" if not "%%b"=="" set "PORT=%%b"
     )
 )
@@ -72,7 +73,7 @@ echo.
 echo  [OK] Administrator Privileges: Active
 echo  [OK] Detected PHP: %PHP_BIN%
 echo  [OK] Service Port: %PORT% (Configured in .env as APP_PORT)
-echo  [OK] Project Path: %~dp0
+echo  [OK] Project Path: %PROJECT_DIR%
 echo.
 echo Select an installation method:
 echo.
@@ -105,14 +106,14 @@ echo ========================================================
 echo [1/3] Preparing NSSM Service Manager...
 echo ========================================================
 
-set NSSM_BIN=%~dp0tools\nssm.exe
+set NSSM_BIN=%PROJECT_DIR%\tools\nssm.exe
 if not exist "%NSSM_BIN%" (
     where nssm >nul 2>&1
     if %ERRORLEVEL% EQU 0 (
         set NSSM_BIN=nssm
     ) else (
         echo NSSM not found locally. Downloading lightweight nssm.exe...
-        powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; try { Invoke-WebRequest -Uri 'https://github.com/kirillkovalenko/nssm-win64/raw/master/nssm.exe' -OutFile '%~dp0tools\nssm.exe' -TimeoutSec 10 } catch { Write-Host 'Download failed or timed out.' }"
+        powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; try { Invoke-WebRequest -Uri 'https://github.com/kirillkovalenko/nssm-win64/raw/master/nssm.exe' -OutFile '%PROJECT_DIR%\tools\nssm.exe' -TimeoutSec 10 } catch { Write-Host 'Download failed or timed out.' }"
     )
 )
 
@@ -143,12 +144,12 @@ if %ERRORLEVEL% NEQ 0 (
     goto :install_schtasks
 )
 
-"%NSSM_BIN%" set %SERVICE_NAME% AppDirectory "%~dp0"
+"%NSSM_BIN%" set %SERVICE_NAME% AppDirectory "%PROJECT_DIR%"
 "%NSSM_BIN%" set %SERVICE_NAME% DisplayName "SendMessageBots Web Service"
 "%NSSM_BIN%" set %SERVICE_NAME% Description "SendMessageBots PHP background web service on port %PORT%"
 "%NSSM_BIN%" set %SERVICE_NAME% Start SERVICE_AUTO_START
-"%NSSM_BIN%" set %SERVICE_NAME% AppStdout "%~dp0logs\service_out.log"
-"%NSSM_BIN%" set %SERVICE_NAME% AppStderr "%~dp0logs\service_err.log"
+"%NSSM_BIN%" set %SERVICE_NAME% AppStdout "%PROJECT_DIR%\logs\service_out.log"
+"%NSSM_BIN%" set %SERVICE_NAME% AppStderr "%PROJECT_DIR%\logs\service_err.log"
 "%NSSM_BIN%" set %SERVICE_NAME% AppRotateFiles 1
 "%NSSM_BIN%" set %SERVICE_NAME% AppRotateOnline 1
 "%NSSM_BIN%" set %SERVICE_NAME% AppRotateBytes 5242880
@@ -165,7 +166,7 @@ echo  - Status: Active in background (24/7)
 echo  - Port:   %PORT%
 echo  - Startup: Automatic on Windows reboot (No user login needed)
 echo  - Local URL: http://localhost:%PORT%/admin/
-echo  - Control with: service_control.bat
+echo  - Control with: scripts\service_control.bat
 echo ========================================================
 echo.
 pause
@@ -181,12 +182,15 @@ echo Setting up Native Windows Task Scheduler Service on port %PORT%...
 echo ========================================================
 
 set TASK_NAME=SendMessageBots_Server
-set RUNNER_VBS=%~dp0tools\run_hidden.vbs
+set RUNNER_VBS=%PROJECT_DIR%\tools\run_hidden.vbs
 
 echo Creating hidden background launcher...
 > "%RUNNER_VBS%" (
+    echo Set fso = CreateObject("Scripting.FileSystemObject"^)
+    echo scriptDir = fso.GetParentFolderName(WScript.ScriptFullName^)
+    echo projectDir = fso.GetParentFolderName(scriptDir^)
     echo Set WshShell = CreateObject("WScript.Shell"^)
-    echo WshShell.CurrentDirectory = "%~dp0"
+    echo WshShell.CurrentDirectory = projectDir
     echo WshShell.Run """%PHP_BIN%"" -S 0.0.0.0:%PORT% router.php", 0, False
 )
 
@@ -210,7 +214,7 @@ if %ERRORLEVEL% EQU 0 (
     echo  - Port:   %PORT%
     echo  - Auto-start: Configured for every Windows restart
     echo  - Local URL:  http://localhost:%PORT%/admin/
-    echo  - Control with: service_control.bat
+    echo  - Control with: scripts\service_control.bat
     echo ========================================================
 ) else (
     echo.

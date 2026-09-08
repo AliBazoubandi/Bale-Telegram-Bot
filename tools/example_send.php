@@ -4,16 +4,13 @@
  * Example: send notifications (text, photos, or PDF documents) from PHP / CLI.
  *
  * Before running, register an app first:
- *   php register_app.php "Test App"
+ *   php bin/register_app.php "Test App"
  *
  * Then run:
- *   php example_send.php
+ *   php tools/example_send.php
  */
 
-require_once __DIR__ . '/Env.php';
-require_once __DIR__ . '/NotificationSender.php';
-
-Env::load(__DIR__ . '/.env');
+require_once __DIR__ . '/../src/bootstrap.php';
 
 // ── Fill these in ───────────────────────────────────────────────────
 $appId = 1;                          // sender_apps.id of your registered app
@@ -35,8 +32,8 @@ $sender = new NotificationSender();
 //     $appId,
 //     'تصویر فاکتور ضمیمه گردید.',
 //     'https://example.com',
-//     __DIR__ . '/admin/assets/images/telegram.webp', // local file path or URL
-//     'photo'                                         // attachment type: 'photo' or 'document'
+//     __DIR__ . '/../admin/assets/images/telegram.webp', // local file path or URL
+//     'photo'                                            // attachment type: 'photo' or 'document'
 // );
 
 // Example 3: Send message with a PDF attachment (direct local file path or public URL)
@@ -45,7 +42,7 @@ $results = $sender->sendToPhone(
     $appId,
     'فایل PDF فاکتور ضمیمه گردید.',
     'https://example.com',
-    __DIR__ . '/uploads/attachments/sample.pdf', // or URL
+    AttachmentValidator::storageDir() . DIRECTORY_SEPARATOR . 'sample.pdf', // resolved via AttachmentValidator
     'document'
 );
 

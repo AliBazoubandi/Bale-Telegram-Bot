@@ -2,10 +2,10 @@
 
 /**
  * Pre-flight System & Environment Diagnostic Tool for Windows
- * Run via: php check_requirements.php
+ * Run via: php bin/check_requirements.php
  */
 
-require_once __DIR__ . '/Env.php';
+require_once __DIR__ . '/../src/bootstrap.php';
 
 $isCli = (php_sapi_name() === 'cli');
 $green = $isCli ? "\033[32m" : '';
@@ -62,16 +62,14 @@ printStatus("post_max_size", true, "Value: {$postMax} (Recommended >= 10M)");
 
 // 4. .env File Check
 echo "\n" . $cyan . "── Checking Configuration (.env) ──" . $reset . "\n";
-$envPath = __DIR__ . '/.env';
+$envPath = ROOT_PATH . '/.env';
 $envExists = file_exists($envPath);
 printStatus(".env File", $envExists, $envExists ? "Found at {$envPath}" : "Missing! Copy .env.example to .env");
 if (!$envExists) {
     $allPassed = false;
 } else {
-    Env::load($envPath);
-    
     $botLogo = getenv('BOT_LOGO_PATH') ?: 'assets/bot-logo.png';
-    $botLogoFull = __DIR__ . '/' . $botLogo;
+    $botLogoFull = ROOT_PATH . '/' . $botLogo;
     printStatus("Bot Logo Asset", file_exists($botLogoFull), $botLogo);
 
     $webhookSecret = getenv('WEBHOOK_SECRET');
@@ -86,7 +84,6 @@ if (!$envExists) {
 
 // 5. Storage Directory Permissions
 echo "\n" . $cyan . "── Checking Storage & Permissions ──" . $reset . "\n";
-require_once __DIR__ . '/AttachmentValidator.php';
 $storageDir = AttachmentValidator::storageDir();
 $storageOk = is_dir($storageDir) && is_writable($storageDir);
 printStatus("Storage Directory", $storageOk, "Path: {$storageDir} (" . ($storageOk ? "Writable" : "Not writable") . ")");
@@ -95,7 +92,6 @@ if (!$storageOk) $allPassed = false;
 // 6. MySQL Database Connection & Tables
 echo "\n" . $cyan . "── Checking Database Connection ──" . $reset . "\n";
 if ($envExists) {
-    require_once __DIR__ . '/Db.php';
     try {
         $db = Db::conn();
         printStatus("MySQL Connection", true, "Connected to " . (getenv('DB_HOST') ?: '127.0.0.1') . ":" . (getenv('DB_PORT') ?: 3306));
@@ -121,7 +117,7 @@ if ($envExists) {
         if (empty($missingTables)) {
             printStatus("Database Tables", true, "All 6 required tables exist");
         } else {
-            printStatus("Database Tables", false, "Missing tables: " . implode(', ', $missingTables) . " (Run setup_database.bat)");
+            printStatus("Database Tables", false, "Missing tables: " . implode(', ', $missingTables) . " (Run scripts/setup_database.bat)");
             $allPassed = false;
         }
 

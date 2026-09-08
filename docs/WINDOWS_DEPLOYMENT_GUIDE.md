@@ -31,11 +31,15 @@ WEBHOOK_SECRET=your_secret_key_here
 
 ## ۲. بررسی سلامت سیستم و ایجاد دیتابیس
 
-1. **بررسی پیش‌نیازها (`check_env.bat`):**
-   - روی `check_env.bat` دوبار کلیک کنید تا اکستنشن‌های PHP و ارتباط با دیتابیس بررسی شود.
-2. **ساخت خودکار دیتابیس و جداول (`setup_database.bat`):**
+1. **بررسی پیش‌نیازها (`scripts/check_env.bat`):**
+   - روی `scripts/check_env.bat` (یا دستور `php bin/check_requirements.php`) دوبار کلیک کنید تا اکستنشن‌های PHP و ارتباط با دیتابیس بررسی شود.
+2. **ساخت خودکار دیتابیس و جداول (`scripts/setup_database.bat`):**
    - در کنترل پنل XAMPP سرویس **MySQL** را Start کنید.
-   - روی `setup_database.bat` دوبار کلیک کنید تا دیتابیس `notifier`، جداول و کاربر پیش‌فرض مدیریت (`admin` / `123456`) ساخته شوند.
+   - روی `scripts/setup_database.bat` (یا دستور `php bin/setup_db.php`) دوبار کلیک کنید تا دیتابیس `notifier` و تمامی جداول ساخته شوند.
+   - سپس با اجرای دستور زیر حساب مدیر سامانه را بسازید:
+     ```bash
+     php bin/create_admin.php <username> <password> "نام مدیر"
+     ```
 
 ---
 
@@ -79,10 +83,10 @@ WEBHOOK_SECRET=your_secret_key_here
 
 اگر ترجیح می‌دهید آپاچی دست‌نخورده بماند و پروژه روی پورت اختصاصی خودش (مثلاً `8080` یا پورت تنظیم شده در `APP_PORT`) کار کند:
 
-1. روی **`service_install.bat`** راست‌کلیک کرده و **Run as administrator** را بزنید.
+1. روی **`scripts/service_install.bat`** راست‌کلیک کرده و **Run as administrator** را بزنید.
 2. گزینه **[2] (Windows Task Scheduler)** یا گزینه **[1] (NSSM)** را انتخاب کنید.
 3. برنامه با روتر امنیتی اختصاصی [`router.php`](file:///e:/php%20projects/SendMessageBots/router.php) به عنوان سرویس ۲۴ ساعته فعال می‌شود.
-4. مدیریت، راه‌اندازی مجدد و مشاهده لاگ‌ها با **`service_control.bat`** انجام می‌شود.
+4. مدیریت، راه‌اندازی مجدد و مشاهده لاگ‌ها با **`scripts/service_control.bat`** انجام می‌شود.
 
 ---
 
@@ -96,8 +100,8 @@ WEBHOOK_SECRET=your_secret_key_here
   cloudflared tunnel --url http://localhost:80
   ```
 
-### ب) ثبت خودکار وبهوک‌ها با `set_webhooks.bat`:
-1. فایل **`set_webhooks.bat`** را اجرا کنید.
+### ب) ثبت خودکار وبهوک‌ها با `scripts/set_webhooks.bat`:
+1. فایل **`scripts/set_webhooks.bat`** (یا دستور `php bin/register_webhooks.php "https://yourdomain.com"`) را اجرا کنید.
 2. آدرس دامنه یا تونل HTTPS خود را وارد کنید (مثال: `https://bot.mydomain.com` یا `https://xxx.ngrok-free.dev`).
 3. اسکریپت به صورت خودکار:
    - وبهوک تلگرام را با توکن و Secret Token ثبت می‌کند.
@@ -110,19 +114,19 @@ WEBHOOK_SECRET=your_secret_key_here
 
 - **ورود به پنل وب:**
   `http://localhost/admin/` (اگر از آپاچی پورت ۸۰ استفاده می‌کنید) یا `http://localhost:8080/admin/`
-  کاربر: `admin` | رمز عبور: `123456`
+  کاربر: `admin` | رمز عبور: تنظیم شده هنگام ایجاد حساب کاربری مدیر
 
 - **ساخت مدیر جدید در خط فرمان:**
   ```cmd
-  php create_admin.php <username> <password> "نام مدیر"
+  php bin/create_admin.php <username> <password> "نام مدیر"
   ```
 
 - **ثبت برنامه ارسال‌کننده جدید (تولید app_key):**
   ```cmd
-  php register_app.php "نام سیستم فرستنده"
+  php bin/register_app.php "نام سیستم فرستنده"
   ```
 
 - **تست ارسال پیام:**
   ```cmd
-  php example_send.php
+  php tools/example_send.php
   ```

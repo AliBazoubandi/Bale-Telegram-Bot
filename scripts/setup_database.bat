@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0.."
 title SendMessageBots - Database Setup
 
 echo ========================================================
@@ -23,7 +23,7 @@ if %ERRORLEVEL% NEQ 0 (
     set PHP_BIN=php
 )
 
-"%PHP_BIN%" setup_db.php
+"%PHP_BIN%" bin\setup_db.php
 
 echo.
 pause

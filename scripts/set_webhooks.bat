@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 setlocal enabledelayedexpansion
-cd /d "%~dp0"
+cd /d "%~dp0.."
 title SendMessageBots - Webhook Registration Tool
 
 where php >nul 2>&1
@@ -35,7 +35,7 @@ if "%BASE_URL%"=="" (
 )
 
 :: Run unified webhook registration
-"%PHP_BIN%" register_webhooks.php "%BASE_URL%"
+"%PHP_BIN%" bin\register_webhooks.php "%BASE_URL%"
 
 echo.
 pause

@@ -4,13 +4,10 @@
  * CLI tool — Create an admin user.
  *
  * Usage:
- *   php create_admin.php "username" "password" ["Display Name"]
+ *   php bin/create_admin.php "username" "password" ["Display Name"]
  */
 
-require_once __DIR__ . '/Env.php';
-require_once __DIR__ . '/Db.php';
-
-Env::load(__DIR__ . '/.env');
+require_once __DIR__ . '/../src/bootstrap.php';
 
 if (php_sapi_name() !== 'cli') {
     http_response_code(403);
@@ -23,7 +20,7 @@ $password    = $argv[2] ?? null;
 $displayName = $argv[3] ?? null;
 
 if ($username === null || $password === null) {
-    fwrite(STDERR, "Usage: php create_admin.php \"username\" \"password\" [\"Display Name\"]\n");
+    fwrite(STDERR, "Usage: php bin/create_admin.php \"username\" \"password\" [\"Display Name\"]\n");
     exit(1);
 }
 

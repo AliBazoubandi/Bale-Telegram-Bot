@@ -7,6 +7,11 @@
  * when running via: php -S 0.0.0.0:8080 router.php
  */
 
+// ── Security Headers ──────────────────────────────────────────────────
+header('X-Frame-Options: SAMEORIGIN');
+header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+
 $root = __DIR__;
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 $path = urldecode($uri);
@@ -24,10 +29,10 @@ $cleanPath = ltrim($normalizedPath, '/');
 
 // ── Security Rules (Equivalent to .htaccess) ───────────────────────────
 
-// 1. Block sensitive files & extensions (.env, .sql, .md, .lock, .json, Docker files)
+// 1. Block sensitive files & extensions (.env, .sql, .md, .lock, .bat, .txt, .json, Docker files)
 if (
-    preg_match('/\.(env(\..*)?|sql|md|lock|json)$/i', $cleanPath) ||
-    preg_match('/^(Dockerfile|docker-compose\.yml|\.gitignore)$/i', $cleanPath)
+    preg_match('/\.(env(\..*)?|sql|md|lock|bat|txt|json)$/i', $cleanPath) ||
+    preg_match('/^(Dockerfile|docker-compose\.yml|\.gitignore|\.dockerignore)$/i', $cleanPath)
 ) {
     http_response_code(403);
     echo 'Access denied';
@@ -36,8 +41,15 @@ if (
 
 // 2. Block internal classes, scripts & non-public directories
 if (
-    str_starts_with($cleanPath, 'Messenger/') ||
+    str_starts_with($cleanPath, 'src/') ||
+    str_starts_with($cleanPath, 'bin/') ||
+    str_starts_with($cleanPath, 'database/') ||
+    str_starts_with($cleanPath, 'scripts/') ||
     str_starts_with($cleanPath, 'storage/') ||
+    str_starts_with($cleanPath, 'tools/') ||
+    str_starts_with($cleanPath, 'docs/') ||
+    str_starts_with($cleanPath, 'Messenger/') ||
+    in_array($cleanPath, ['src', 'bin', 'database', 'scripts', 'storage', 'tools', 'docs', 'Messenger'], true) ||
     $cleanPath === 'admin/assets/input.css'
 ) {
     http_response_code(404);
@@ -45,21 +57,10 @@ if (
     exit;
 }
 
-// 3. Block direct web access to internal PHP libraries and CLI scripts
+// 3. Block direct web access to router and legacy root entries
 $blockedPhpFiles = [
-    'Db.php',
-    'Env.php',
-    'PhoneNormalizer.php',
-    'AttachmentValidator.php',
-    'WebhookGuard.php',
-    'NotificationSender.php',
-    'ConversationHandler.php',
-    'register_app.php',
-    'create_admin.php',
-    'example_send.php',
-    'set_webhook.php',
+    'setup_db.php',
     'router.php',
-    'check_requirements.php',
 ];
 
 if (in_array($cleanPath, $blockedPhpFiles, true)) {
@@ -91,11 +92,10 @@ if (file_exists($fullPath) && !is_dir($fullPath)) {
         exit;
     }
 
-    // MIME type mapping for static files
+    // MIME type mapping for static files (safe public assets only; .txt and .json blocked above)
     $mimeTypes = [
         'css'   => 'text/css; charset=UTF-8',
         'js'    => 'application/javascript; charset=UTF-8',
-        'json'  => 'application/json; charset=UTF-8',
         'png'   => 'image/png',
         'jpg'   => 'image/jpeg',
         'jpeg'  => 'image/jpeg',
@@ -108,7 +108,6 @@ if (file_exists($fullPath) && !is_dir($fullPath)) {
         'woff2' => 'font/woff2',
         'ttf'   => 'font/ttf',
         'eot'   => 'application/vnd.ms-fontobject',
-        'txt'   => 'text/plain; charset=UTF-8',
     ];
 
     if (isset($mimeTypes[$extension])) {

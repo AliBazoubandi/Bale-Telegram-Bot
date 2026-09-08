@@ -3,8 +3,8 @@ FROM php:8.3-apache
 # mysqli isn't compiled in by default on the base image — Db.php needs it.
 RUN docker-php-ext-install mysqli
 
-# Let per-project .htaccess rules take effect (they block /.env, /schema.sql,
-# /Messenger/, /storage/, internal classes, ...) and make sure mod_rewrite is
+# Let per-project .htaccess rules take effect (they block /.env, /database/schema.sql,
+# /src/, /bin/, /storage/, internal classes, ...) and make sure mod_rewrite is
 # available for anything the app adds later.
 RUN a2enmod rewrite \
  && { \

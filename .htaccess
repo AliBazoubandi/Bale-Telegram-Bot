@@ -1,19 +1,24 @@
+# ── Security Headers ──────────────────────────────────────────────────
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
 # ── Block direct web access to secrets, internals and non-public dirs ──
 
-# Sensitive file types (env files, SQL dumps/migrations, docs, lockfiles).
-<FilesMatch "\.(env|env\.example|sql|md|lock)$">
+# Sensitive file types (env files, SQL dumps/migrations, docs, lockfiles, batch scripts, text files, JSON configs)
+<FilesMatch "\.(env|env\..*|sql|md|lock|bat|txt|json)$">
     Require all denied
 </FilesMatch>
 
-# Internal PHP — classes and CLI-only tools must never be requested over HTTP.
-<FilesMatch "^(Db\.php|Env\.php|PhoneNormalizer\.php|AttachmentValidator\.php|WebhookGuard\.php|NotificationSender\.php|ConversationHandler\.php|register_app\.php|create_admin\.php|example_send\.php|set_webhook\.php)$">
+# Internal PHP — router and legacy root entries must never be requested over HTTP
+<FilesMatch "^(setup_db\.php|router\.php)$">
     Require all denied
 </FilesMatch>
 
-# Belt-and-suspenders for dotfiles like .env at the URL root.
-RedirectMatch 404 ^/\.env
+# Belt-and-suspenders for dotfiles like .env at the URL root
+RedirectMatch 404 ^/\.
 
-# Whole directories that must not be served (Messenger classes; attachments
-# stored outside the docroot also land in a sibling storage/ dir).
-RedirectMatch 404 ^/Messenger(/|$)
-RedirectMatch 404 ^/storage(/|$)
+# Whole directories that must not be served
+RedirectMatch 404 ^/(src|bin|database|scripts|storage|tools|docs|Messenger)(/|$)

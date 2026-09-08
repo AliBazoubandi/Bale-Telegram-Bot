@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0.."
 title SendMessageBots - System Diagnostic Check
 
 echo Checking PHP and Environment requirements...
@@ -19,6 +19,6 @@ if %ERRORLEVEL% NEQ 0 (
     )
 )
 
-php check_requirements.php
+php bin\check_requirements.php
 echo.
 pause

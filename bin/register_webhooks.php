@@ -3,12 +3,22 @@
 /**
  * Unified Webhook Registration for Telegram and Bale
  *
+ * Canonical tool for registering HTTPS webhooks and bot command menus.
+ * Reads TELEGRAM_BOT_TOKEN, BALE_BOT_TOKEN, and WEBHOOK_SECRET from .env.
+ *
  * Usage:
- *   php register_webhooks.php "https://example.com"
+ *   php bin/register_webhooks.php "https://example.com"
+ *
+ * Bot Profile Photos & Avatar Setup:
+ *   - Telegram: Open @BotFather -> /mybots -> Select bot -> Bot Settings -> Bot Picture -> upload assets/bot-logo.png
+ *   - Bale: Set avatar via Bale bot management dashboard.
+ *
+ * Webhook Verification Test:
+ *   curl -X POST "<webhook-url>" -H "X-Telegram-Bot-Api-Secret-Token: <WEBHOOK_SECRET>" \
+ *        -H "Content-Type: application/json" -d '{"update_id":1}'
  */
 
-require_once __DIR__ . '/Env.php';
-Env::load(__DIR__ . '/.env');
+require_once __DIR__ . '/../src/bootstrap.php';
 
 if (php_sapi_name() !== 'cli') {
     http_response_code(403);
@@ -19,7 +29,7 @@ if (php_sapi_name() !== 'cli') {
 $inputUrl = $argv[1] ?? '';
 if (empty($inputUrl) || !filter_var($inputUrl, FILTER_VALIDATE_URL)) {
     echo "\n[ERROR] Invalid URL provided.\n";
-    echo "Usage: php register_webhooks.php \"https://your-public-url.com\"\n\n";
+    echo "Usage: php bin/register_webhooks.php \"https://your-public-url.com\"\n\n";
     exit(1);
 }
 
