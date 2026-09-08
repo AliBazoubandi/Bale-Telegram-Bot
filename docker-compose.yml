@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:80"
+    env_file: .env
+    volumes:
+      - .:/var/www/html   # live-mounts your local files — edit PHP and just refresh, no rebuild
+      - storage_data:/var/www/storage   # attachments live outside the webroot; volume keeps them across rebuilds
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}   # root access for local dev only — never reuse these values in production
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql   # auto-runs on first boot
+    ports:
+      - "3307:3306"
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    command: ["http", "app:80"]
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    ports:
+      - "4040:4040"   # ngrok's local inspector/API — check your public URL here
+    depends_on:
+      - app
+
+volumes:
+  db_data:
+  storage_data:

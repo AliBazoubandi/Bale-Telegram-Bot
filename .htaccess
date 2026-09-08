@@ -1,0 +1,19 @@
+# ── Block direct web access to secrets, internals and non-public dirs ──
+
+# Sensitive file types (env files, SQL dumps/migrations, docs, lockfiles).
+<FilesMatch "\.(env|env\.example|sql|md|lock)$">
+    Require all denied
+</FilesMatch>
+
+# Internal PHP — classes and CLI-only tools must never be requested over HTTP.
+<FilesMatch "^(Db\.php|Env\.php|PhoneNormalizer\.php|AttachmentValidator\.php|WebhookGuard\.php|NotificationSender\.php|ConversationHandler\.php|register_app\.php|create_admin\.php|example_send\.php|set_webhook\.php)$">
+    Require all denied
+</FilesMatch>
+
+# Belt-and-suspenders for dotfiles like .env at the URL root.
+RedirectMatch 404 ^/\.env
+
+# Whole directories that must not be served (Messenger classes; attachments
+# stored outside the docroot also land in a sibling storage/ dir).
+RedirectMatch 404 ^/Messenger(/|$)
+RedirectMatch 404 ^/storage(/|$)
