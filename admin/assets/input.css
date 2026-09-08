@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@source "../*.php";
+
+@theme {
+    --color-brand: #06B6D4;
+    --color-brand-dark: #0891B2;
+    --color-brand-light: #E0F7FA;
+    --color-accent: #F97316;
+    --color-accent-light: #FFF7ED;
+    --color-surface: #4A5568;
+    --color-surface-light: #F7FAFC;
+    --color-body: #111827;
+    --color-success: #10B981;
+    --color-danger: #EF4444;
+}
+
+body { font-family: 'Inter', system-ui, sans-serif; }
+.nav-link { transition: all 0.15s ease; }
+.nav-link:hover { background: rgba(255,255,255,0.08); }
+.nav-link.active { background: rgba(6,182,212,0.15); border-right: 3px solid var(--color-brand); color: var(--color-brand); }
+.stat-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
+.table-row { transition: background 0.1s ease; }
+.table-row:hover { background: var(--color-surface-light); }
+.btn { transition: all 0.15s ease; }
+.btn:active { transform: scale(0.97); }
