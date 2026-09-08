@@ -43,7 +43,8 @@ class AttachmentValidator
      */
     public static function storageDir(): string
     {
-        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'attachments';
+        $baseDir = defined('ROOT_PATH') ? dirname(ROOT_PATH) : dirname(__DIR__, 2);
+        $dir = $baseDir . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'attachments';
 
         // Create on demand with 0755. Suppressed on purpose: if the directory
         // cannot be created (e.g. read-only volume, ownership problems) we

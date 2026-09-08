@@ -1,11 +1,6 @@
 <?php
 
-require_once __DIR__ . '/Env.php';
-require_once __DIR__ . '/WebhookGuard.php';
-require_once __DIR__ . '/ConversationHandler.php';
-require_once __DIR__ . '/Messenger/MessengerFactory.php';
-
-Env::load(__DIR__ . '/.env');
+require_once __DIR__ . '/src/bootstrap.php';
 
 // Reject any update that does not carry our secret — via the
 // X-Telegram-Bot-Api-Secret-Token header (or ?secret= for Bale).

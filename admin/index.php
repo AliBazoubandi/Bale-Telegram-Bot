@@ -1,8 +1,6 @@
 <?php
 
 require_once __DIR__ . '/auth.php';
-require_once __DIR__ . '/../PhoneNormalizer.php';
-require_once __DIR__ . '/../Jalali.php';
 
 $db = Db::conn();
 

@@ -86,20 +86,28 @@ abstract class AbstractHttpBotClient implements MessengerClientInterface
             CURLOPT_TIMEOUT        => 30,
             CURLOPT_CONNECTTIMEOUT => 15,
             CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4, // Force IPv4 to prevent 21s IPv6 DNS timeouts on Windows
-            CURLOPT_SSL_VERIFYPEER => false,             // Avoid corporate SSL inspection handshake failures
-            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
         ];
 
-        // Optional Proxy configuration
+        // Optional Proxy configuration & CA bundle overrides
         if (static::class === 'TelegramBot') {
             $proxy = getenv('TELEGRAM_PROXY') ?: getenv('HTTP_PROXY');
             if (!empty($proxy) && $proxy !== 'changeme') {
                 $curlOptions[CURLOPT_PROXY] = $proxy;
             }
+            $caBundle = getenv('TELEGRAM_CA_BUNDLE');
+            if (!empty($caBundle) && file_exists($caBundle)) {
+                $curlOptions[CURLOPT_CAINFO] = $caBundle;
+            }
         } elseif (static::class === 'BaleBot') {
             $proxy = getenv('BALE_PROXY');
             if (!empty($proxy) && $proxy !== 'changeme') {
                 $curlOptions[CURLOPT_PROXY] = $proxy;
+            }
+            $caBundle = getenv('BALE_CA_BUNDLE');
+            if (!empty($caBundle) && file_exists($caBundle)) {
+                $curlOptions[CURLOPT_CAINFO] = $caBundle;
             }
         }
 

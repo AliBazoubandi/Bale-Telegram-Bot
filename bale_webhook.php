@@ -1,11 +1,6 @@
 <?php
 
-require_once __DIR__ . '/Env.php';
-require_once __DIR__ . '/WebhookGuard.php';
-require_once __DIR__ . '/ConversationHandler.php';
-require_once __DIR__ . '/Messenger/MessengerFactory.php';
-
-Env::load(__DIR__ . '/.env');
+require_once __DIR__ . '/src/bootstrap.php';
 
 // Bale doesn't document the secret-token header, so the guard also accepts
 // ?secret=<token>. On mismatch: 403 and total silence (nothing is logged).

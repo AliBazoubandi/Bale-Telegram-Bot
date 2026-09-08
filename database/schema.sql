@@ -75,12 +75,9 @@ CREATE TABLE IF NOT EXISTS admin_users (
     UNIQUE KEY uq_admin_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Insert a default admin (username: admin / password: 123456).
--- ⚠ SECURITY: these are throwaway bootstrap credentials. CHANGE THE PASSWORD
--- IMMEDIATELY on first deployment (php create_admin.php / UPDATE admin_users
--- with a fresh password_hash()).
-INSERT INTO admin_users (username, password_hash, display_name)
-SELECT 'admin', '$2a$12$hqF/cvRsH9rYnEJLQ0KTwec4FBRSETQPqfX1wlJ9alJgpl1QcuczW', 'مدیر اصلی'
-WHERE NOT EXISTS (
-    SELECT 1 FROM admin_users WHERE username = 'admin'
-);
+CREATE TABLE IF NOT EXISTS login_throttles (
+    ip           VARCHAR(45)  NOT NULL PRIMARY KEY,
+    failures     INT UNSIGNED NOT NULL DEFAULT 1,
+    last_attempt DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    locked_until DATETIME     NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

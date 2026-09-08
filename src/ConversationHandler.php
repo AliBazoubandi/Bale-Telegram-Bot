@@ -451,11 +451,11 @@ class ConversationHandler
             $contactId = $db->insert_id;
             $stmt->close();
 
-            // Upsert channel — also save username.
+            // Upsert channel — also save username (preserve existing username if incoming is NULL).
             $stmt = $db->prepare(
                 'INSERT INTO contact_channels (contact_id, platform, chat_id, username)
                  VALUES (?, ?, ?, ?)
-                 ON DUPLICATE KEY UPDATE chat_id = VALUES(chat_id), username = VALUES(username)'
+                 ON DUPLICATE KEY UPDATE chat_id = VALUES(chat_id), username = COALESCE(VALUES(username), username)'
             );
             $stmt->bind_param('isss', $contactId, $this->platform, $chatId, $username);
             $stmt->execute();

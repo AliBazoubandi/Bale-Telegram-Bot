@@ -10,7 +10,6 @@
  */
 
 require_once __DIR__ . '/auth.php';
-require_once __DIR__ . '/../AttachmentValidator.php';
 
 $id = (int) ($_GET['id'] ?? 0);
 

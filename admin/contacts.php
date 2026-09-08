@@ -1,8 +1,6 @@
 <?php
 
 require_once __DIR__ . '/auth.php';
-require_once __DIR__ . '/../PhoneNormalizer.php';
-require_once __DIR__ . '/../Jalali.php';
 
 $db = Db::conn();
 
@@ -17,27 +15,28 @@ $params = [];
 $types  = '';
 
 if ($search !== '') {
+    $escapedSearch = addcslashes($search, '%_\\');
     // Match phone numbers regardless of stored ('98912…') vs entered ('0912…') format.
-    $clauses = ['c.phone_number LIKE ?'];
-    $params  = ["%{$search}%"];
+    $clauses = ['c.phone_number LIKE ? ESCAPE \'\\\\\''];
+    $params  = ["%{$escapedSearch}%"];
     $types   = 's';
 
     $normalizedSearch = PhoneNormalizer::normalize($search);
     if ($normalizedSearch !== null && $normalizedSearch !== $search) {
-        $clauses[] = 'c.phone_number LIKE ?';
-        $params[]  = "%{$normalizedSearch}%";
+        $clauses[] = 'c.phone_number LIKE ? ESCAPE \'\\\\\'';
+        $params[]  = "%" . addcslashes($normalizedSearch, '%_\\') . "%";
         $types    .= 's';
     }
 
     $localSearch = PhoneNormalizer::toLocalDisplay($search);
     if ($localSearch !== $search && preg_match('/^\d+$/', $localSearch)) {
-        $clauses[] = 'c.phone_number LIKE ?';
-        $params[]  = "%{$localSearch}%";
+        $clauses[] = 'c.phone_number LIKE ? ESCAPE \'\\\\\'';
+        $params[]  = "%" . addcslashes($localSearch, '%_\\') . "%";
         $types    .= 's';
     }
 
-    $clauses[] = 'c.display_name LIKE ?';
-    $params[]  = "%{$search}%";
+    $clauses[] = 'c.display_name LIKE ? ESCAPE \'\\\\\'';
+    $params[]  = "%{$escapedSearch}%";
     $types    .= 's';
 
     $where = 'WHERE ' . implode(' OR ', $clauses);

@@ -14,10 +14,7 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-require_once __DIR__ . '/../Env.php';
-require_once __DIR__ . '/../Db.php';
-
-Env::load(__DIR__ . '/../.env');
+require_once __DIR__ . '/../src/bootstrap.php';
 
 if (empty($_SESSION['admin_id'])) {
     header('Location: login.php');

@@ -3,10 +3,7 @@
 require_once __DIR__ . '/session_boot.php';
 admin_secure_session_start();
 
-require_once __DIR__ . '/../Env.php';
-require_once __DIR__ . '/../Db.php';
-
-Env::load(__DIR__ . '/../.env');
+require_once __DIR__ . '/../src/bootstrap.php';
 
 $error = '';
 
@@ -18,11 +15,24 @@ if (!empty($_SESSION['admin_id'])) {
 
 // Handle POST login.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // ── Throttle: 5 failures within 10 minutes lock the form (no DB touch) ──
-    $failedLogins = (int) ($_SESSION['failed_logins'] ?? 0);
-    $lastFailTs   = (int) ($_SESSION['last_fail_ts'] ?? 0);
+    $clientIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    if (!filter_var($clientIp, FILTER_VALIDATE_IP)) {
+        $clientIp = '127.0.0.1';
+    }
 
-    if ($failedLogins >= 5 && (time() - $lastFailTs) < 600) {
+    $db  = Db::conn();
+    $now = time();
+
+    // ── Throttle Check: 5 failures within 10 minutes locks the IP ──
+    $stmt = $db->prepare('SELECT failures, (locked_until IS NOT NULL AND locked_until > NOW()) AS is_locked, TIMESTAMPDIFF(SECOND, last_attempt, NOW()) AS age_sec FROM login_throttles WHERE ip = ?');
+    $stmt->bind_param('s', $clientIp);
+    $stmt->execute();
+    $throttle = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    $isLocked = ($throttle && (int) $throttle['is_locked'] === 1);
+
+    if ($isLocked) {
         $error = 'تلاش بیش از حد؛ چند دقیقه بعد دوباره تلاش کنید.';
     } else {
         $username = trim($_POST['username'] ?? '');
@@ -31,7 +41,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($username === '' || $password === '') {
             $error = 'نام کاربری و رمز عبور الزامی است.';
         } else {
-            $db   = Db::conn();
             $stmt = $db->prepare('SELECT id, username, password_hash, display_name FROM admin_users WHERE username = ?');
             $stmt->bind_param('s', $username);
             $stmt->execute();
@@ -46,21 +55,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['admin_username']     = $user['username'];
                 $_SESSION['admin_display_name'] = $user['display_name'] ?: $user['username'];
 
-                // Successful login — reset the throttle counters.
-                unset($_SESSION['failed_logins'], $_SESSION['last_fail_ts']);
+                // Successful login — clear IP throttle record and session counters
+                $delStmt = $db->prepare('DELETE FROM login_throttles WHERE ip = ?');
+                $delStmt->bind_param('s', $clientIp);
+                $delStmt->execute();
+                $delStmt->close();
 
                 header('Location: index.php');
                 exit;
             }
 
-            // Record the failure for throttling. A failure older than the
-            // 10-minute window starts a fresh count.
-            if ((time() - $lastFailTs) >= 600) {
-                $_SESSION['failed_logins'] = 1;
-            } else {
-                $_SESSION['failed_logins'] = $failedLogins + 1;
+            // Record failed attempt for IP throttling
+            $failures = 1;
+            if ($throttle && (int) ($throttle['age_sec'] ?? 9999) < 600 && (int) ($throttle['is_locked'] ?? 0) === 0) {
+                $failures = (int) $throttle['failures'] + 1;
             }
-            $_SESSION['last_fail_ts'] = time();
+
+            $upStmt = $db->prepare(
+                'INSERT INTO login_throttles (ip, failures, last_attempt, locked_until)
+                 VALUES (?, ?, NOW(), IF(? >= 5, DATE_ADD(NOW(), INTERVAL 10 MINUTE), NULL))
+                 ON DUPLICATE KEY UPDATE
+                     failures = VALUES(failures),
+                     last_attempt = NOW(),
+                     locked_until = IF(VALUES(failures) >= 5, DATE_ADD(NOW(), INTERVAL 10 MINUTE), NULL)'
+            );
+            $upStmt->bind_param('sii', $clientIp, $failures, $failures);
+            $upStmt->execute();
+            $upStmt->close();
 
             $error = 'نام کاربری یا رمز عبور نادرست است.';
         }

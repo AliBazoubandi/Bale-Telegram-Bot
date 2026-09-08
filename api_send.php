@@ -1,11 +1,6 @@
 <?php
 
-require_once __DIR__ . '/Env.php';
-require_once __DIR__ . '/Db.php';
-require_once __DIR__ . '/AttachmentValidator.php';
-require_once __DIR__ . '/NotificationSender.php';
-
-Env::load(__DIR__ . '/.env');
+require_once __DIR__ . '/src/bootstrap.php';
 
 // ── Only accept POST ────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -32,12 +27,20 @@ if ($provided === '') {
 }
 
 // Look up the app in sender_apps.
-$db   = Db::conn();
-$stmt = $db->prepare('SELECT id, app_name, is_active FROM sender_apps WHERE app_key = ?');
-$stmt->bind_param('s', $provided);
-$stmt->execute();
-$app = $stmt->get_result()->fetch_assoc();
-$stmt->close();
+try {
+    $db   = Db::conn();
+    $stmt = $db->prepare('SELECT id, app_name, is_active FROM sender_apps WHERE app_key = ?');
+    $stmt->bind_param('s', $provided);
+    $stmt->execute();
+    $app = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+} catch (Throwable $e) {
+    error_log((string) $e);
+    http_response_code(500);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => false, 'error' => 'Internal error.']);
+    exit;
+}
 
 if (!$app) {
     http_response_code(401);
@@ -106,9 +109,10 @@ if (stripos($contentType, 'application/json') !== false) {
             }
         } elseif ($stored['error_key'] === AttachmentValidator::ERR_MOVE_FAILED) {
             // Loud failure — never silently drop the attachment.
+            error_log('Attachment store failed: ' . $stored['error_key']);
             http_response_code(500);
             header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['ok' => false, 'error' => AttachmentValidator::apiErrorMessage($stored['error_key'])]);
+            echo json_encode(['ok' => false, 'error' => 'Internal error.']);
             exit;
         } else {
             $errors[] = AttachmentValidator::apiErrorMessage($stored['error_key']);
@@ -172,10 +176,11 @@ try {
         'results'    => $results,
     ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 } catch (Throwable $e) {
+    error_log((string) $e);
     http_response_code(500);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([
         'ok'    => false,
-        'error' => $e->getMessage(),
+        'error' => 'Internal error.',
     ]);
 }

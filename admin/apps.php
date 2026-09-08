@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bind_param('ss', $appName, $appKey);
                 $stmt->execute();
                 $stmt->close();
-                $msg = 'اپلیکیشن جدید با موفقیت ثبت شد.';
+                $msg = 'اپلیکیشن جدید با موفقیت ثبت شد. کلید API: ' . $appKey . ' (توجه: این کلید فقط یک‌بار نمایش داده می‌شود؛ لطفاً آن را ذخیره کنید)';
                 $msgType = 'success';
             } catch (Throwable $e) {
                 if (str_contains($e->getMessage(), 'Duplicate entry')) {
@@ -146,9 +146,9 @@ ob_start();
                         <tr class="table-row">
                             <td class="px-6 py-4 font-medium text-body"><?= htmlspecialchars($a['app_name']) ?></td>
                             <td class="px-6 py-4">
-                                <div class="flex items-center gap-2 group relative">
-                                    <code class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600 font-mono blur-sm hover:blur-none transition-all duration-200 cursor-text select-all" title="برای مشاهده نگه دارید">
-                                        <?= htmlspecialchars($a['app_key']) ?>
+                                <div class="flex items-center gap-2">
+                                    <code class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600 font-mono">
+                                        <?= htmlspecialchars(substr($a['app_key'], 0, 6) . '…') ?>
                                     </code>
                                 </div>
                             </td>

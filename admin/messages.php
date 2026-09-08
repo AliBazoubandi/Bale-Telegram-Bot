@@ -1,10 +1,6 @@
 <?php
 
 require_once __DIR__ . '/auth.php';
-require_once __DIR__ . '/../AttachmentValidator.php';
-require_once __DIR__ . '/../PhoneNormalizer.php';
-require_once __DIR__ . '/../Jalali.php';
-require_once __DIR__ . '/../NotificationSender.php';
 
 $db = Db::conn();
 $msg = '';
@@ -53,6 +49,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send_
     } elseif ($uploadErrorKey !== null) {
         $msg = AttachmentValidator::adminErrorMessage($uploadErrorKey);
         $msgType = 'error';
+    } elseif ($link !== null && (!filter_var($link, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $link))) {
+        $msg = 'آدرس لینک باید یک آدرس اینترنتی معتبر با پروتکل http یا https باشد.';
+        $msgType = 'error';
     } elseif ($attachmentUrl !== null && !AttachmentValidator::isAllowedRemoteUrl($attachmentUrl)) {
         // NOTE: checks the URL FIELD only — a successful file upload replaces
         // $attachment with a stored local path, which must not be rejected here.
@@ -83,7 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send_
                 $msgType = 'error';
             }
         } catch (Throwable $e) {
-            $msg = 'خطا در ارسال پیام: ' . $e->getMessage();
+            error_log((string) $e);
+            $msg = 'خطای داخلی در ارسال پیام رخ داد.';
             $msgType = 'error';
         }
     }
@@ -130,27 +130,28 @@ if ($fStatus !== '') {
     $types .= 's';
 }
 if ($search !== '') {
+    $escapedSearch = addcslashes($search, '%_\\');
     // Match phone numbers regardless of stored ('98912…') vs entered ('0912…') format.
-    $phoneLikes = ['ml.phone_number LIKE ?'];
-    $params[] = "%{$search}%";
+    $phoneLikes = ['ml.phone_number LIKE ? ESCAPE \'\\\\\''];
+    $params[] = "%{$escapedSearch}%";
     $types .= 's';
 
     $normalizedSearch = PhoneNormalizer::normalize($search);
     if ($normalizedSearch !== null && $normalizedSearch !== $search) {
-        $phoneLikes[] = 'ml.phone_number LIKE ?';
-        $params[] = "%{$normalizedSearch}%";
+        $phoneLikes[] = 'ml.phone_number LIKE ? ESCAPE \'\\\\\'';
+        $params[] = "%" . addcslashes($normalizedSearch, '%_\\') . "%";
         $types .= 's';
     }
 
     $localSearch = PhoneNormalizer::toLocalDisplay($search);
     if ($localSearch !== $search && preg_match('/^\d+$/', $localSearch)) {
-        $phoneLikes[] = 'ml.phone_number LIKE ?';
-        $params[] = "%{$localSearch}%";
+        $phoneLikes[] = 'ml.phone_number LIKE ? ESCAPE \'\\\\\'';
+        $params[] = "%" . addcslashes($localSearch, '%_\\') . "%";
         $types .= 's';
     }
 
-    $phoneLikes[] = 'ml.message LIKE ?';
-    $params[] = "%{$search}%";
+    $phoneLikes[] = 'ml.message LIKE ? ESCAPE \'\\\\\'';
+    $params[] = "%{$escapedSearch}%";
     $types .= 's';
 
     $whereClauses[] = '(' . implode(' OR ', $phoneLikes) . ')';
