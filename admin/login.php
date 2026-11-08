@@ -94,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ورود — پنل مدیریت</title>
+    <link rel="icon" type="image/jpeg" href="assets/images/send-message-icon.jpg">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/tailwind.css">
 </head>
@@ -103,10 +104,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="w-full max-w-md mx-auto">
             <!-- Logo / Title -->
             <div class="text-center mb-8">
-                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand text-white mb-4 shadow-lg shadow-brand/30">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/>
-                    </svg>
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl overflow-hidden mb-4 shadow-xl shadow-brand/30 border border-gray-100">
+                    <img src="assets/images/send-message-icon.jpg" alt="Logo" class="w-full h-full object-cover">
                 </div>
                 <h1 class="text-2xl font-bold text-body">پنل مدیریت</h1>
                 <p class="text-gray-500 mt-1">سیستم ارسال پیام</p>

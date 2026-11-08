@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle ?? 'Admin') ?> — پنل مدیریت</title>
+    <link rel="icon" type="image/jpeg" href="assets/images/send-message-icon.jpg">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/tailwind.css">
 </head>
@@ -13,17 +14,15 @@
     <aside class="fixed top-0 right-0 h-screen w-64 bg-surface text-white flex flex-col z-50 shadow-xl">
         <!-- Brand -->
         <div class="px-6 py-5 border-b border-white/10">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-brand flex items-center justify-center shadow-lg shadow-brand/30">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/>
-                    </svg>
+            <a href="index.php" title="رفتن به داشبورد" class="flex items-center gap-3 group transition duration-200">
+                <div class="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-brand/30 shrink-0 border border-white/10 group-hover:scale-105 transition duration-200">
+                    <img src="assets/images/send-message-icon.jpg" alt="Logo" class="w-full h-full object-cover">
                 </div>
                 <div>
-                    <h2 class="font-bold text-sm">پنل ارسال هشدار</h2>
+                    <h2 class="font-bold text-sm text-white group-hover:text-brand transition">پنل ارسال هشدار</h2>
                     <p class="text-xs text-gray-400">پنل مدیریت</p>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Navigation -->
