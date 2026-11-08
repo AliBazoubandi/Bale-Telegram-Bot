@@ -23,18 +23,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $db  = Db::conn();
     $now = time();
 
-    // ── Self-healing: Ensure login_throttles table exists on existing databases ──
-    try {
-        $db->query("CREATE TABLE IF NOT EXISTS login_throttles (
-            ip           VARCHAR(45)  NOT NULL PRIMARY KEY,
-            failures     INT UNSIGNED NOT NULL DEFAULT 1,
-            last_attempt DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            locked_until DATETIME     NULL DEFAULT NULL
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-    } catch (Throwable $e) {
-        error_log("Failed ensuring login_throttles table: " . $e->getMessage());
-    }
-
     // ── Throttle Check: 5 failures within 10 minutes locks the IP ──
     $throttle = null;
     $isLocked = false;
@@ -149,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
                         </svg>
-                        <?= htmlspecialchars($error) ?>
+                        <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>
                     </div>
                 <?php endif; ?>
 
@@ -157,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2" for="username">نام کاربری</label>
                         <input type="text" id="username" name="username" required autocomplete="username"
-                               value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"
+                               value="<?= htmlspecialchars((string) ($_POST['username'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                                class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
                                       focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand
                                       transition placeholder-gray-400"

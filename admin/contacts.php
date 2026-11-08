@@ -99,12 +99,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['flash_msg'] = $flashMsg;
             $_SESSION['flash_type'] = 'success';
         } catch (Throwable $e) {
+            error_log((string) $e);
             if (str_contains($e->getMessage(), 'uq_contacts_phone') || str_contains($e->getMessage(), 'Duplicate entry')) {
                 $_SESSION['flash_msg'] = 'مخاطبی با این شماره تلفن از قبل وجود دارد.';
             } elseif (str_contains($e->getMessage(), 'uq_platform_chat')) {
                 $_SESSION['flash_msg'] = 'این شناسه چت قبلاً به مخاطب دیگری متصل شده است.';
             } else {
-                $_SESSION['flash_msg'] = 'خطا در ثبت مخاطب: ' . $e->getMessage();
+                $_SESSION['flash_msg'] = 'خطای داخلی در ثبت یا ویرایش مخاطب رخ داد.';
             }
             $_SESSION['flash_type'] = 'error';
         }
@@ -114,12 +115,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'delete_contact') {
         $contactId = (int) ($_POST['contact_id'] ?? 0);
         if ($contactId > 0) {
-            $stmt = $db->prepare('DELETE FROM contacts WHERE id = ?');
-            $stmt->bind_param('i', $contactId);
-            $stmt->execute();
-            $stmt->close();
-            $_SESSION['flash_msg'] = 'مخاطب با موفقیت حذف شد.';
-            $_SESSION['flash_type'] = 'success';
+            try {
+                $stmt = $db->prepare('DELETE FROM contacts WHERE id = ?');
+                $stmt->bind_param('i', $contactId);
+                $stmt->execute();
+                $stmt->close();
+                $_SESSION['flash_msg'] = 'مخاطب با موفقیت حذف شد.';
+                $_SESSION['flash_type'] = 'success';
+            } catch (Throwable $e) {
+                error_log((string) $e);
+                $_SESSION['flash_msg'] = 'خطای داخلی در حذف مخاطب رخ داد.';
+                $_SESSION['flash_type'] = 'error';
+            }
         }
         header('Location: contacts.php');
         exit;
@@ -209,7 +216,7 @@ ob_start();
             <?php else: ?>
                 <svg class="w-5 h-5 text-red-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
             <?php endif; ?>
-            <span class="text-sm font-medium"><?= htmlspecialchars($msg) ?></span>
+            <span class="text-sm font-medium"><?= htmlspecialchars($msg, ENT_QUOTES, 'UTF-8') ?></span>
         </div>
     </div>
 <?php endif; ?>
@@ -221,7 +228,7 @@ ob_start();
             <svg class="w-5 h-5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
             </svg>
-            <input type="text" name="q" value="<?= htmlspecialchars($search) ?>"
+            <input type="text" name="q" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>"
                    placeholder="جستجو بر اساس شماره تلفن یا نام..."
                    class="w-full pr-10 pl-4 py-2.5 rounded-xl border border-gray-200 bg-white
                           focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition text-sm">
@@ -322,22 +329,22 @@ ob_start();
                         ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
                         ?>
                         <tr class="table-row">
-                            <td class="px-6 py-3 text-gray-400"><?= $c['id'] ?></td>
-                            <td class="px-6 py-3 font-mono text-xs whitespace-nowrap font-medium text-gray-800" dir="ltr"><?= htmlspecialchars(PhoneNormalizer::toLocalDisplay($c['phone_number'])) ?></td>
-                            <td class="px-6 py-3 font-medium"><?= htmlspecialchars($c['display_name'] ?: '—') ?></td>
+                            <td class="px-6 py-3 text-gray-400"><?= (int)$c['id'] ?></td>
+                            <td class="px-6 py-3 font-mono text-xs whitespace-nowrap font-medium text-gray-800" dir="ltr"><?= htmlspecialchars(PhoneNormalizer::toLocalDisplay($c['phone_number']), ENT_QUOTES, 'UTF-8') ?></td>
+                            <td class="px-6 py-3 font-medium"><?= htmlspecialchars($c['display_name'] ?: '—', ENT_QUOTES, 'UTF-8') ?></td>
                             <td class="px-6 py-3">
                                 <div class="flex gap-1.5 flex-wrap">
                                     <?php foreach ($platforms as $pl): ?>
                                         <?php $isTg = ($pl === 'telegram'); ?>
                                         <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium
                                             <?= $isTg ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100' ?>"
-                                            title="<?= isset($usernames[$pl]) ? '@' . htmlspecialchars($usernames[$pl]) : '' ?>">
+                                            title="<?= isset($usernames[$pl]) ? '@' . htmlspecialchars($usernames[$pl], ENT_QUOTES, 'UTF-8') : '' ?>">
                                             <img src="<?= $isTg ? 'assets/images/telegram.webp' : 'assets/images/bale.png' ?>"
-                                                 alt="<?= htmlspecialchars($pl) ?>"
+                                                 alt="<?= htmlspecialchars($pl, ENT_QUOTES, 'UTF-8') ?>"
                                                  class="w-3.5 h-3.5 rounded-full object-contain">
-                                            <span><?= ucfirst($pl) ?></span>
+                                            <span><?= htmlspecialchars(ucfirst($pl), ENT_QUOTES, 'UTF-8') ?></span>
                                             <?php if (isset($usernames[$pl])): ?>
-                                                <span class="text-gray-400 text-[11px] mr-0.5">(@<?= htmlspecialchars($usernames[$pl]) ?>)</span>
+                                                <span class="text-gray-400 text-[11px] mr-0.5">(@<?= htmlspecialchars($usernames[$pl], ENT_QUOTES, 'UTF-8') ?>)</span>
                                             <?php endif; ?>
                                         </span>
                                     <?php endforeach; ?>
@@ -352,9 +359,9 @@ ob_start();
                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
                                         <span>⭐</span>
                                         <img src="<?= $prefTg ? 'assets/images/telegram.webp' : 'assets/images/bale.png' ?>"
-                                             alt="<?= htmlspecialchars($c['preferred_platform']) ?>"
+                                             alt="<?= htmlspecialchars($c['preferred_platform'], ENT_QUOTES, 'UTF-8') ?>"
                                              class="w-3.5 h-3.5 rounded-full object-contain">
-                                        <span><?= ucfirst($c['preferred_platform']) ?></span>
+                                        <span><?= htmlspecialchars(ucfirst($c['preferred_platform']), ENT_QUOTES, 'UTF-8') ?></span>
                                     </span>
                                 <?php else: ?>
                                     <span class="text-gray-400">—</span>
@@ -364,7 +371,7 @@ ob_start();
                             <td class="px-6 py-3 text-right whitespace-nowrap">
                                 <div class="inline-flex items-center gap-1.5">
                                     <!-- Edit Button -->
-                                    <button type="button" data-contact='<?= $contactJson ?>' onclick="openEditContactModal(this)"
+                                    <button type="button" data-contact='<?= htmlspecialchars($contactJson, ENT_QUOTES, 'UTF-8') ?>' onclick="openEditContactModal(this)"
                                             class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 border border-gray-200 bg-white hover:bg-gray-50 hover:text-brand transition cursor-pointer"
                                             title="ویرایش اطلاعات">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -384,7 +391,10 @@ ob_start();
                                     </a>
 
                                     <!-- Delete Button -->
-                                    <button type="button" onclick="deleteContact(<?= $c['id'] ?>, '<?= htmlspecialchars(addslashes($c['display_name'] ?: PhoneNormalizer::toLocalDisplay($c['phone_number']))) ?>')"
+                                    <button type="button"
+                                            data-id="<?= (int)$c['id'] ?>"
+                                            data-name="<?= htmlspecialchars($c['display_name'] ?: PhoneNormalizer::toLocalDisplay($c['phone_number']), ENT_QUOTES, 'UTF-8') ?>"
+                                            onclick="confirmDeleteContact(this)"
                                             class="inline-flex items-center justify-center p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 transition cursor-pointer"
                                             title="حذف مخاطب">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -440,7 +450,7 @@ ob_start();
 
         <!-- Form Body -->
         <form method="POST" id="contactForm" class="p-6 space-y-4 overflow-y-auto flex-1">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="action" id="formAction" value="create_contact">
             <input type="hidden" name="contact_id" id="contactId" value="0">
 
@@ -557,7 +567,7 @@ ob_start();
 
 <!-- Hidden Delete Form -->
 <form id="deleteForm" method="POST" class="hidden">
-    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
     <input type="hidden" name="action" value="delete_contact">
     <input type="hidden" name="contact_id" id="deleteContactId" value="0">
 </form>
@@ -630,6 +640,15 @@ modal.addEventListener('click', function(e) {
         closeContactModal();
     }
 });
+
+function confirmDeleteContact(btn) {
+    const id = btn.dataset.id;
+    const name = btn.dataset.name || '';
+    if (confirm('آیا از حذف مخاطب «' + name + '» اطمینان دارید؟ تمامی اتصالات پیام‌رسان این مخاطب نیز حذف خواهند شد.')) {
+        document.getElementById('deleteContactId').value = id;
+        document.getElementById('deleteForm').submit();
+    }
+}
 
 function deleteContact(id, name) {
     if (confirm('آیا از حذف مخاطب «' + name + '» اطمینان دارید؟ تمامی اتصالات پیام‌رسان این مخاطب نیز حذف خواهند شد.')) {

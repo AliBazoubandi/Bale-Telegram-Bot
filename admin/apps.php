@@ -34,7 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $msg = 'اپلیکیشنی با این نام از قبل وجود دارد.';
                     $msgType = 'error';
                 } else {
-                    $msg = 'خطایی رخ داد.';
+                    error_log((string) $e);
+                    $msg = 'خطای داخلی رخ داد.';
                     $msgType = 'error';
                 }
             }
@@ -62,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $msg = 'اپلیکیشن حذف شد.';
                 $msgType = 'success';
             } catch (Throwable $e) {
+                error_log((string) $e);
                 $msg = 'امکان حذف اپلیکیشن وجود ندارد (احتمالا پیام‌های ثبت شده دارد). آن را غیرفعال کنید.';
                 $msgType = 'error';
             }
@@ -102,7 +104,7 @@ ob_start();
 <!-- Alerts -->
 <?php if ($msg): ?>
     <div class="mb-6 p-4 rounded-xl flex items-center gap-2 text-sm <?= $msgType === 'success' ? 'bg-green-50 text-success border border-green-200' : 'bg-red-50 text-danger border border-red-200' ?>">
-        <?= htmlspecialchars($msg) ?>
+        <?= htmlspecialchars($msg, ENT_QUOTES, 'UTF-8') ?>
     </div>
 <?php endif; ?>
 
@@ -111,13 +113,13 @@ ob_start();
     <h2 class="font-semibold text-body mb-4">ثبت اپلیکیشن جدید</h2>
     <form method="POST" class="flex flex-wrap gap-4 items-end">
         <input type="hidden" name="action" value="register">
-        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
         <div class="flex-1 min-w-[250px]">
             <label class="block text-xs font-medium text-gray-500 mb-1" for="app_name">نام اپلیکیشن</label>
             <input type="text" id="app_name" name="app_name" required placeholder="مثلا سیستم حسابداری..."
                    class="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition">
         </div>
-        <button type="submit" class="btn px-6 py-2.5 rounded-xl bg-brand text-white font-medium hover:bg-brand-dark shadow-sm">
+        <button type="submit" class="btn px-6 py-2.5 rounded-xl bg-brand text-white font-medium hover:bg-brand-dark shadow-sm cursor-pointer">
             ایجاد اپلیکیشن
         </button>
     </form>
@@ -144,11 +146,11 @@ ob_start();
                 <tbody class="divide-y divide-gray-50">
                     <?php foreach ($apps as $a): ?>
                         <tr class="table-row">
-                            <td class="px-6 py-4 font-medium text-body"><?= htmlspecialchars($a['app_name']) ?></td>
+                            <td class="px-6 py-4 font-medium text-body"><?= htmlspecialchars($a['app_name'], ENT_QUOTES, 'UTF-8') ?></td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-2">
                                     <code class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600 font-mono">
-                                        <?= htmlspecialchars(substr($a['app_key'], 0, 6) . '…') ?>
+                                        <?= htmlspecialchars(substr($a['app_key'], 0, 6) . '…', ENT_QUOTES, 'UTF-8') ?>
                                     </code>
                                 </div>
                             </td>
@@ -169,8 +171,8 @@ ob_start();
                                 <form method="POST" class="inline">
                                     <input type="hidden" name="action" value="toggle">
                                     <input type="hidden" name="app_id" value="<?= $a['id'] ?>">
-                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                                    <button type="submit" class="text-xs font-medium px-3 py-1.5 rounded-lg border <?= $a['is_active'] ? 'text-orange-600 border-orange-200 hover:bg-orange-50' : 'text-green-600 border-green-200 hover:bg-green-50' ?> transition">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                                    <button type="submit" class="text-xs font-medium px-3 py-1.5 rounded-lg border <?= $a['is_active'] ? 'text-orange-600 border-orange-200 hover:bg-orange-50' : 'text-green-600 border-green-200 hover:bg-green-50' ?> transition cursor-pointer">
                                         <?= $a['is_active'] ? 'غیرفعال‌سازی' : 'فعال‌سازی' ?>
                                     </button>
                                 </form>
@@ -179,9 +181,9 @@ ob_start();
                                 <form method="POST" class="inline" onsubmit="return confirm('آیا مطمئن هستید؟ این عمل غیرقابل بازگشت است.');">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="app_id" value="<?= $a['id'] ?>">
-                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                                     <?php $cantDelete = $a['message_count'] > 0; ?>
-                                    <button type="submit" <?= $cantDelete ? 'title="حذف این اپلیکیشن امکان‌پذیر نیست؛ آن را غیرفعال کنید." disabled' : '' ?> class="text-xs font-medium px-3 py-1.5 rounded-lg border text-danger border-red-200 hover:bg-red-50 transition<?= $cantDelete ? ' opacity-50 cursor-not-allowed' : '' ?>">
+                                    <button type="submit" <?= $cantDelete ? 'title="حذف این اپلیکیشن امکان‌پذیر نیست؛ آن را غیرفعال کنید." disabled' : '' ?> class="text-xs font-medium px-3 py-1.5 rounded-lg border text-danger border-red-200 hover:bg-red-50 transition<?= $cantDelete ? ' opacity-50 cursor-not-allowed' : ' cursor-pointer' ?>">
                                         حذف
                                     </button>
                                 </form>

@@ -111,7 +111,7 @@ ob_start();
                 </div>
                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold
                     <?= $isTg ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100' ?>">
-                    <?= ucfirst($ps['platform']) ?>
+                    <?= htmlspecialchars(ucfirst($ps['platform']), ENT_QUOTES, 'UTF-8') ?>
                 </span>
             </div>
             <div class="grid grid-cols-3 gap-4 text-center">
@@ -164,20 +164,20 @@ ob_start();
                     <?php foreach ($recentMessages as $msg): ?>
                         <?php $isTg = ($msg['platform'] === 'telegram'); ?>
                         <tr class="table-row">
-                            <td class="px-6 py-3 whitespace-nowrap text-gray-500" title="<?= htmlspecialchars($msg['sent_at']) ?>"><?= Jalali::format($msg['sent_at']) ?></td>
-                            <td class="px-6 py-3 whitespace-nowrap font-medium"><?= htmlspecialchars($msg['app_name']) ?></td>
-                            <td class="px-6 py-3 whitespace-nowrap font-mono text-xs" dir="ltr"><?= htmlspecialchars(PhoneNormalizer::toLocalDisplay($msg['phone_number'])) ?></td>
+                            <td class="px-6 py-3 whitespace-nowrap text-gray-500" title="<?= htmlspecialchars($msg['sent_at'], ENT_QUOTES, 'UTF-8') ?>"><?= Jalali::format($msg['sent_at']) ?></td>
+                            <td class="px-6 py-3 whitespace-nowrap font-medium"><?= htmlspecialchars($msg['app_name'], ENT_QUOTES, 'UTF-8') ?></td>
+                            <td class="px-6 py-3 whitespace-nowrap font-mono text-xs" dir="ltr"><?= htmlspecialchars(PhoneNormalizer::toLocalDisplay($msg['phone_number']), ENT_QUOTES, 'UTF-8') ?></td>
                             <td class="px-6 py-3 whitespace-nowrap">
                                 <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium
                                     <?= $isTg ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100' ?>">
                                     <img src="<?= $isTg ? 'assets/images/telegram.webp' : 'assets/images/bale.png' ?>"
-                                         alt="<?= htmlspecialchars($msg['platform']) ?>"
+                                         alt="<?= htmlspecialchars($msg['platform'], ENT_QUOTES, 'UTF-8') ?>"
                                          class="w-3.5 h-3.5 rounded-full object-contain">
-                                    <?= ucfirst($msg['platform']) ?>
+                                    <?= htmlspecialchars(ucfirst($msg['platform']), ENT_QUOTES, 'UTF-8') ?>
                                 </span>
                             </td>
                             <td class="px-6 py-3 max-w-xs text-gray-600">
-                                <div class="truncate"><?= htmlspecialchars(mb_substr($msg['message'], 0, 60)) ?><?= mb_strlen($msg['message']) > 60 ? '…' : '' ?></div>
+                                <div class="truncate"><?= htmlspecialchars(mb_substr($msg['message'], 0, 60), ENT_QUOTES, 'UTF-8') ?><?= mb_strlen($msg['message']) > 60 ? '…' : '' ?></div>
                                 <?php if (!empty($msg['attachment_url'])): ?>
                                     <div class="mt-1 flex items-center gap-1 text-xs text-brand font-medium">
                                         <?php if (($msg['attachment_type'] ?? '') === 'photo'): ?>

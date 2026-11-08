@@ -223,7 +223,7 @@ ob_start();
 <!-- Alerts -->
 <?php if ($msg): ?>
     <div class="mb-6 p-4 rounded-xl flex items-center justify-between text-sm <?= $msgType === 'success' ? 'bg-green-50 text-success border border-green-200' : 'bg-red-50 text-danger border border-red-200' ?>">
-        <span><?= htmlspecialchars($msg) ?></span>
+        <span><?= htmlspecialchars($msg, ENT_QUOTES, 'UTF-8') ?></span>
     </div>
 <?php endif; ?>
 
@@ -232,7 +232,7 @@ ob_start();
     <form method="GET" class="flex flex-wrap items-end gap-4">
         <div class="w-full sm:w-auto flex-1 min-w-[200px]">
             <label class="block text-xs font-medium text-gray-500 mb-1">جستجو</label>
-            <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="شماره تلفن یا متن پیام..."
+            <input type="text" name="q" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="شماره تلفن یا متن پیام..."
                    class="w-full px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition">
         </div>
 
@@ -241,7 +241,7 @@ ob_start();
             <select name="app" class="w-full px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition">
                 <option value="">همه</option>
                 <?php foreach ($allApps as $a): ?>
-                    <option value="<?= $a['id'] ?>" <?= $fApp == $a['id'] ? 'selected' : '' ?>><?= htmlspecialchars($a['app_name']) ?></option>
+                    <option value="<?= $a['id'] ?>" <?= $fApp == $a['id'] ? 'selected' : '' ?>><?= htmlspecialchars($a['app_name'], ENT_QUOTES, 'UTF-8') ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -303,50 +303,63 @@ ob_start();
                     <?php foreach ($messages as $msg): ?>
                         <?php $isTg = ($msg['platform'] === 'telegram'); ?>
                         <tr class="table-row">
-                            <td class="px-6 py-3 whitespace-nowrap text-gray-500" title="<?= htmlspecialchars($msg['sent_at']) ?>">
+                            <td class="px-6 py-3 whitespace-nowrap text-gray-500" title="<?= htmlspecialchars($msg['sent_at'], ENT_QUOTES, 'UTF-8') ?>">
                                 <?= Jalali::format($msg['sent_at']) ?>
                             </td>
-                            <td class="px-6 py-3 whitespace-nowrap font-medium"><?= htmlspecialchars($msg['app_name']) ?></td>
-                            <td class="px-6 py-3 whitespace-nowrap font-mono text-xs text-gray-600" dir="ltr"><?= htmlspecialchars(PhoneNormalizer::toLocalDisplay($msg['phone_number'])) ?></td>
+                            <td class="px-6 py-3 whitespace-nowrap font-medium"><?= htmlspecialchars($msg['app_name'], ENT_QUOTES, 'UTF-8') ?></td>
+                            <td class="px-6 py-3 whitespace-nowrap font-mono text-xs text-gray-600" dir="ltr"><?= htmlspecialchars(PhoneNormalizer::toLocalDisplay($msg['phone_number']), ENT_QUOTES, 'UTF-8') ?></td>
                             <td class="px-6 py-3 whitespace-nowrap">
                                 <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium
                                     <?= $isTg ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100' ?>">
                                     <img src="<?= $isTg ? 'assets/images/telegram.webp' : 'assets/images/bale.png' ?>"
-                                         alt="<?= htmlspecialchars($msg['platform']) ?>"
+                                         alt="<?= htmlspecialchars($msg['platform'], ENT_QUOTES, 'UTF-8') ?>"
                                          class="w-3.5 h-3.5 rounded-full object-contain">
-                                    <?= ucfirst($msg['platform']) ?>
+                                    <?= htmlspecialchars(ucfirst($msg['platform']), ENT_QUOTES, 'UTF-8') ?>
                                 </span>
                             </td>
                             <td class="px-6 py-3 max-w-md">
-                                <div class="text-gray-800 break-words" title="<?= htmlspecialchars($msg['message']) ?>">
-                                    <?= nl2br(htmlspecialchars(mb_substr($msg['message'], 0, 100))) ?><?= mb_strlen($msg['message']) > 100 ? '…' : '' ?>
+                                <div class="text-gray-800 break-words" title="<?= htmlspecialchars($msg['message'], ENT_QUOTES, 'UTF-8') ?>">
+                                    <?= nl2br(htmlspecialchars(mb_substr($msg['message'], 0, 100), ENT_QUOTES, 'UTF-8')) ?><?= mb_strlen($msg['message']) > 100 ? '…' : '' ?>
                                 </div>
                                 
                                 <div class="mt-1.5 flex flex-wrap items-center gap-2">
                                     <?php if (!empty($msg['link'])): ?>
-                                        <a href="<?= htmlspecialchars($msg['link']) ?>" target="_blank"
-                                           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-brand text-xs hover:underline max-w-[220px] truncate"
-                                           title="<?= htmlspecialchars($msg['link']) ?>">
-                                            <span>🔗</span> <span class="truncate"><?= htmlspecialchars($msg['link']) ?></span>
-                                        </a>
+                                        <?php
+                                        $rawLink = trim((string) $msg['link']);
+                                        $isHttpLink = ($rawLink !== '')
+                                            && (bool) filter_var($rawLink, FILTER_VALIDATE_URL)
+                                            && (bool) preg_match('#^https?://#i', $rawLink);
+                                        ?>
+                                        <?php if ($isHttpLink): ?>
+                                            <a href="<?= htmlspecialchars($rawLink, ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer"
+                                               class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-brand text-xs hover:underline max-w-[220px] truncate"
+                                               title="<?= htmlspecialchars($rawLink, ENT_QUOTES, 'UTF-8') ?>">
+                                                <span>🔗</span> <span class="truncate"><?= htmlspecialchars($rawLink, ENT_QUOTES, 'UTF-8') ?></span>
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-xs max-w-[220px] truncate"
+                                                  title="<?= htmlspecialchars($rawLink, ENT_QUOTES, 'UTF-8') ?>">
+                                                <span>🔗</span> <span class="truncate"><?= htmlspecialchars($rawLink, ENT_QUOTES, 'UTF-8') ?></span>
+                                            </span>
+                                        <?php endif; ?>
                                     <?php endif; ?>
 
                                     <?php if (!empty($msg['attachment_url'])): ?>
                                         <?php
                                         $attType = $msg['attachment_type'] ?? '';
-                                        $attUrl = $msg['attachment_url'];
+                                        $attUrl = (string) $msg['attachment_url'];
                                         $isLocal = !preg_match('/^https?:\/\//i', $attUrl);
                                         // Local files live outside the web root now — serve them
                                         // through the authenticated attachment endpoint only.
                                         $viewUrl = $isLocal ? 'attachment.php?id=' . (int) $msg['id'] : $attUrl;
                                         ?>
                                         <?php if ($attType === 'photo'): ?>
-                                            <a href="<?= htmlspecialchars($viewUrl) ?>" target="_blank"
+                                            <a href="<?= htmlspecialchars($viewUrl, ENT_QUOTES, 'UTF-8') ?>" target="_blank" <?= !$isLocal ? 'rel="noopener noreferrer"' : '' ?>
                                                class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 text-xs font-medium hover:bg-purple-100 transition">
                                                 <span>📷</span> <span>مشاهده تصویر</span>
                                             </a>
                                         <?php else: ?>
-                                            <a href="<?= htmlspecialchars($viewUrl) ?>" target="_blank"
+                                            <a href="<?= htmlspecialchars($viewUrl, ENT_QUOTES, 'UTF-8') ?>" target="_blank" <?= !$isLocal ? 'rel="noopener noreferrer"' : '' ?>
                                                class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-xs font-medium hover:bg-amber-100 transition">
                                                 <span>📄</span> <span>دانلود/مشاهده فایل (PDF)</span>
                                             </a>
@@ -360,7 +373,7 @@ ob_start();
                                         <span class="w-1.5 h-1.5 rounded-full bg-success"></span> ارسال شده
                                     </span>
                                 <?php else: ?>
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-danger border border-red-100 cursor-help" title="<?= htmlspecialchars($msg['error_message'] ?? '') ?>">
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-danger border border-red-100 cursor-help" title="<?= htmlspecialchars($msg['error_message'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                                         <span class="w-1.5 h-1.5 rounded-full bg-danger"></span> ناموفق
                                     </span>
                                 <?php endif; ?>
@@ -422,13 +435,13 @@ ob_start();
         <!-- Modal Form -->
         <form method="POST" enctype="multipart/form-data" class="p-6 space-y-4">
             <input type="hidden" name="action" value="send_message">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
 
             <div>
                 <label class="block text-xs font-bold text-gray-700 mb-1.5" for="send_app">انتخاب اپلیکیشن فرستنده</label>
                 <select id="send_app" name="app_id" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition">
                     <?php foreach ($apps as $a): ?>
-                        <option value="<?= $a['id'] ?>"><?= htmlspecialchars($a['app_name']) ?></option>
+                        <option value="<?= $a['id'] ?>"><?= htmlspecialchars($a['app_name'], ENT_QUOTES, 'UTF-8') ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -437,7 +450,7 @@ ob_start();
                 <label class="block text-xs font-bold text-gray-700 mb-1.5" for="send_phone">شماره تلفن مخاطب</label>
                 <div class="relative">
                     <input type="text" id="send_phone" name="phone" required
-                           value="<?= htmlspecialchars($prefilledPhone) ?>"
+                           value="<?= htmlspecialchars($prefilledPhone, ENT_QUOTES, 'UTF-8') ?>"
                            placeholder="مثلا 09121234567 یا 989121234567"
                            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand font-mono transition" dir="ltr">
                 </div>
@@ -445,9 +458,9 @@ ob_start();
                     <div class="mt-1.5 flex items-center gap-1 overflow-x-auto py-1 text-xs text-gray-500">
                         <span class="text-[11px] text-gray-400 whitespace-nowrap">مخاطبین اخیر:</span>
                         <?php foreach (array_slice($recentContacts, 0, 4) as $rc): ?>
-                            <button type="button" onclick="document.getElementById('send_phone').value='<?= $rc['phone_number'] ?>'"
-                                    class="px-2 py-0.5 rounded-lg bg-gray-100 hover:bg-brand-light hover:text-brand transition whitespace-nowrap text-[11px]">
-                                <?= htmlspecialchars($rc['display_name'] ?: $rc['phone_number']) ?>
+                            <button type="button" data-phone="<?= htmlspecialchars($rc['phone_number'], ENT_QUOTES, 'UTF-8') ?>" onclick="document.getElementById('send_phone').value=this.dataset.phone"
+                                    class="px-2 py-0.5 rounded-lg bg-gray-100 hover:bg-brand-light hover:text-brand transition whitespace-nowrap text-[11px] cursor-pointer">
+                                <?= htmlspecialchars($rc['display_name'] ?: $rc['phone_number'], ENT_QUOTES, 'UTF-8') ?>
                             </button>
                         <?php endforeach; ?>
                     </div>

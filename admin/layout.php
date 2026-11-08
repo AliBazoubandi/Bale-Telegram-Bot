@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($pageTitle ?? 'Admin') ?> — پنل مدیریت</title>
+    <title><?= htmlspecialchars($pageTitle ?? 'Admin', ENT_QUOTES, 'UTF-8') ?> — پنل مدیریت</title>
     <link rel="icon" type="image/jpeg" href="assets/images/send-message-icon.jpg">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/tailwind.css">
@@ -60,17 +60,20 @@
         <div class="px-4 py-4 border-t border-white/10">
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-full bg-brand/20 text-brand flex items-center justify-center text-sm font-bold">
-                    <?= mb_strtoupper(mb_substr($adminDisplayName, 0, 1)) ?>
+                    <?= htmlspecialchars(mb_strtoupper(mb_substr($adminDisplayName, 0, 1)), ENT_QUOTES, 'UTF-8') ?>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium truncate"><?= htmlspecialchars($adminDisplayName) ?></p>
-                    <p class="text-xs text-gray-400 truncate">@<?= htmlspecialchars($adminUsername) ?></p>
+                    <p class="text-sm font-medium truncate"><?= htmlspecialchars($adminDisplayName, ENT_QUOTES, 'UTF-8') ?></p>
+                    <p class="text-xs text-gray-400 truncate">@<?= htmlspecialchars($adminUsername, ENT_QUOTES, 'UTF-8') ?></p>
                 </div>
-                <a href="logout.php" title="خروج" class="p-2 rounded-lg hover:bg-white/10 transition text-gray-400 hover:text-white">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/>
-                    </svg>
-                </a>
+                <form method="POST" action="logout.php" class="inline m-0 p-0">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    <button type="submit" title="خروج" class="p-2 rounded-lg hover:bg-white/10 transition text-gray-400 hover:text-white cursor-pointer inline-flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/>
+                        </svg>
+                    </button>
+                </form>
             </div>
         </div>
     </aside>
@@ -82,9 +85,9 @@
             <header class="bg-white border-b border-gray-100 px-8 py-5 sticky top-0 z-40">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h1 class="text-xl font-bold text-body"><?= htmlspecialchars($pageTitle ?? '') ?></h1>
+                        <h1 class="text-xl font-bold text-body"><?= htmlspecialchars($pageTitle ?? '', ENT_QUOTES, 'UTF-8') ?></h1>
                         <?php if (!empty($pageSubtitle)): ?>
-                            <p class="text-sm text-gray-500 mt-0.5"><?= htmlspecialchars($pageSubtitle) ?></p>
+                            <p class="text-sm text-gray-500 mt-0.5"><?= htmlspecialchars($pageSubtitle, ENT_QUOTES, 'UTF-8') ?></p>
                         <?php endif; ?>
                     </div>
                     <div>
