@@ -15,8 +15,8 @@ require_once __DIR__ . '/Messenger/MessengerFactory.php';
  */
 class NotificationSender
 {
-    /** Maximum length of a single text message chunk (Telegram/Bale limit is 4096). */
-    public const MAX_MESSAGE_CHUNK_LENGTH = 4000;
+    /** Maximum length of a single text message chunk (Telegram/Bale limit is 4096; safe margin 3800). */
+    public const MAX_MESSAGE_CHUNK_LENGTH = 3800;
 
     /** Maximum length of a media caption (Telegram/Bale limit is 1024). */
     public const MAX_CAPTION_LENGTH = 1024;
@@ -25,7 +25,38 @@ class NotificationSender
     private const CHUNK_SEND_DELAY_US = 150000;
 
     /**
-     * Splits a long text into clean chunks avoiding breaking words or paragraphs.
+     * Extracts the introductory header/title from a message (e.g. title, date,
+     * and top divider line) so it can be repeated on subsequent chunks for uniform width.
+     *
+     * @param string $text
+     * @return array{0: string, 1: string} [$header, $body]
+     */
+    public static function extractHeader(string $text): array
+    {
+        $text = trim($text);
+
+        // Pattern 1: Look for the first divider line (3+ dashes, underscores, equals, or box drawing)
+        // within the first 1000 characters of the message.
+        if (preg_match('/\A(.*?(\r?\n)[ \t]*[-=_─━═*~#]{3,}[ \t]*(?:\r?\n|$))/su', $text, $m)) {
+            $header = $m[1];
+            $body   = mb_substr($text, mb_strlen($header, 'UTF-8'), null, 'UTF-8');
+            return [$header, $body];
+        }
+
+        // Pattern 2: Look for the first double newline (paragraph break) within the first 400 characters
+        if (preg_match('/\A(.*?(\r?\n){2,})/su', $text, $m)) {
+            $header = $m[1];
+            $body   = mb_substr($text, mb_strlen($header, 'UTF-8'), null, 'UTF-8');
+            return [$header, $body];
+        }
+
+        return ['', $text];
+    }
+
+    /**
+     * Splits a long text into clean chunks avoiding breaking sections, stores, or paragraphs.
+     * When split into multiple parts, each chunk is prefixed with "X/Y\n" and includes
+     * the report header so that all message bubbles render with identical width.
      *
      * @param string $text
      * @param int    $maxChunkLength
@@ -42,54 +73,124 @@ class NotificationSender
             return [$text];
         }
 
+        [$header, $body] = self::extractHeader($text);
+
+        $headerLen = mb_strlen($header, 'UTF-8');
+        $safetyMargin = 25; // room for "1/2\n" or "10/10\n"
+        $maxBodyChunk = max(500, $maxChunkLength - $headerLen - $safetyMargin);
+
+        // Split body into pieces along clean boundaries (divider lines, section starters, paragraphs)
+        $bodyPieces = self::splitBodyIntoPieces($body, $maxBodyChunk);
+        $totalParts = count($bodyPieces);
+
+        if ($totalParts <= 1) {
+            return [$text];
+        }
+
         $chunks = [];
-        $remaining = $text;
+        foreach ($bodyPieces as $idx => $piece) {
+            $partNum = $idx + 1;
+            $prefix = "{$partNum}/{$totalParts}\n";
 
-        while (mb_strlen($remaining, 'UTF-8') > $maxChunkLength) {
-            $candidate = mb_substr($remaining, 0, $maxChunkLength, 'UTF-8');
-            $splitPos = false;
-
-            // Search in candidate for preferred breakpoints (from back to front)
-            // 1. Double line break (paragraphs)
-            $pos = mb_strrpos($candidate, "\n\n", 0, 'UTF-8');
-            if ($pos !== false && $pos >= (int) ($maxChunkLength * 0.4)) {
-                $splitPos = $pos + 2;
+            $chunkHeader = $header;
+            if ($chunkHeader !== '' && !str_ends_with($chunkHeader, "\n")) {
+                $chunkHeader .= "\n";
             }
 
-            // 2. Single line break
-            if ($splitPos === false) {
-                $pos = mb_strrpos($candidate, "\n", 0, 'UTF-8');
-                if ($pos !== false && $pos >= (int) ($maxChunkLength * 0.4)) {
-                    $splitPos = $pos + 1;
-                }
-            }
+            $chunks[] = $prefix . $chunkHeader . trim($piece);
+        }
 
-            // 3. Space or punctuation break
-            if ($splitPos === false) {
-                $pos = mb_strrpos($candidate, ' ', 0, 'UTF-8');
-                if ($pos !== false && $pos >= (int) ($maxChunkLength * 0.4)) {
-                    $splitPos = $pos + 1;
-                }
-            }
+        return $chunks;
+    }
 
-            // 4. Fallback: hard cut at maximum chunk length
-            if ($splitPos === false) {
-                $splitPos = $maxChunkLength;
-            }
+    /**
+     * Splits message body into pieces along section breaks, divider lines, or paragraph boundaries.
+     *
+     * @param string $body
+     * @param int    $maxPieceLen
+     * @return array<int, string>
+     */
+    private static function splitBodyIntoPieces(string $body, int $maxPieceLen): array
+    {
+        $pieces = [];
+        $remaining = trim($body);
 
-            $chunk = trim(mb_substr($remaining, 0, $splitPos, 'UTF-8'));
-            if ($chunk !== '') {
-                $chunks[] = $chunk;
+        while (mb_strlen($remaining, 'UTF-8') > $maxPieceLen) {
+            $candidate = mb_substr($remaining, 0, $maxPieceLen, 'UTF-8');
+            $splitPos = self::findBestSplitPos($candidate, $maxPieceLen);
+
+            $piece = trim(mb_substr($remaining, 0, $splitPos, 'UTF-8'));
+            if ($piece !== '') {
+                $pieces[] = $piece;
             }
 
             $remaining = ltrim(mb_substr($remaining, $splitPos, null, 'UTF-8'));
         }
 
         if ($remaining !== '') {
-            $chunks[] = $remaining;
+            $pieces[] = $remaining;
         }
 
-        return $chunks;
+        return $pieces;
+    }
+
+    /**
+     * Finds the best breakpoint in candidate text, prioritizing divider lines and
+     * section starts (e.g. stores, branches) so blocks are never cut in half.
+     *
+     * @param string $candidate
+     * @param int    $maxLen
+     * @return int
+     */
+    private static function findBestSplitPos(string $candidate, int $maxLen): int
+    {
+        $minPos = (int) ($maxLen * 0.35);
+
+        // 1. Look for divider lines (cut right after the divider line so current section closes)
+        if (preg_match_all('/(?:\r?\n)[ \t]*[-=_─━═*~#]{3,}[ \t]*(?:\r?\n)/u', $candidate, $matches, PREG_OFFSET_CAPTURE)) {
+            for ($i = count($matches[0]) - 1; $i >= 0; $i--) {
+                $matchStr = $matches[0][$i][0];
+                $byteOffset = $matches[0][$i][1];
+                $charOffset = mb_strlen(substr($candidate, 0, $byteOffset), 'UTF-8');
+                $cutPos = $charOffset + mb_strlen($matchStr, 'UTF-8');
+                if ($cutPos >= $minPos && $cutPos <= $maxLen) {
+                    return $cutPos;
+                }
+            }
+        }
+
+        // 2. Look for section starters (cut right before the section starter so it moves to next chunk)
+        $sectionPattern = '/(?:\r?\n)(?=(?:فروشگاه|شعبه|بخش|انبار|واحد|مرکز|کد|ردیف|\d+[\.\-\)]|🔹|▫️|▪️|•|📌|🛒|🏪|🏢))/u';
+        if (preg_match_all($sectionPattern, $candidate, $matches, PREG_OFFSET_CAPTURE)) {
+            for ($i = count($matches[0]) - 1; $i >= 0; $i--) {
+                $byteOffset = $matches[0][$i][1];
+                $charOffset = mb_strlen(substr($candidate, 0, $byteOffset), 'UTF-8');
+                if ($charOffset >= $minPos && $charOffset <= $maxLen) {
+                    return $charOffset + 1;
+                }
+            }
+        }
+
+        // 3. Double newline (paragraph break)
+        $pos = mb_strrpos($candidate, "\n\n", 0, 'UTF-8');
+        if ($pos !== false && $pos >= $minPos) {
+            return $pos + 2;
+        }
+
+        // 4. Single newline
+        $pos = mb_strrpos($candidate, "\n", 0, 'UTF-8');
+        if ($pos !== false && $pos >= $minPos) {
+            return $pos + 1;
+        }
+
+        // 5. Space / word break
+        $pos = mb_strrpos($candidate, ' ', 0, 'UTF-8');
+        if ($pos !== false && $pos >= $minPos) {
+            return $pos + 1;
+        }
+
+        // Fallback: hard cut
+        return $maxLen;
     }
 
     /**
