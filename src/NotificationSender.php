@@ -25,8 +25,9 @@ class NotificationSender
     private const CHUNK_SEND_DELAY_US = 150000;
 
     /**
-     * Extracts the introductory header/title from a message (e.g. title, date,
-     * and top divider line) so it can be repeated on subsequent chunks for uniform width.
+     * Extracts the introductory header/title from a message (e.g. greeting, title, date)
+     * strictly stopping before the first item/section starts, so it can be repeated
+     * cleanly on subsequent chunks.
      *
      * @param string $text
      * @return array{0: string, 1: string} [$header, $body]
@@ -35,18 +36,27 @@ class NotificationSender
     {
         $text = trim($text);
 
-        // Pattern 1: Look for the first divider line (3+ dashes, underscores, equals, or box drawing)
-        // within the first 1000 characters of the message.
-        if (preg_match('/\A(.*?(\r?\n)[ \t]*[-=_─━═*~#]{3,}[ \t]*(?:\r?\n|$))/su', $text, $m)) {
-            $header = $m[1];
-            $body   = mb_substr($text, mb_strlen($header, 'UTF-8'), null, 'UTF-8');
+        // 1. Look for the first store/section/item starter (e.g. "فروشگاه:", "شعبه:", bullet, etc.)
+        // preceded by a newline (and optional divider line) within the first 1500 chars.
+        $sectionPattern = '/\A(.*?)(?:\r?\n)[ \t]*(?:[-=_─━═*~#]{3,}[ \t]*(?:\r?\n)[ \t]*)?(?=(?:فروشگاه|شعبه|بخش|انبار|واحد|مرکز|کد|ردیف|\d+[\.\-\)]|🔹|▫️|▪️|•|📌|🛒|🏪|🏢))/su';
+        if (preg_match($sectionPattern, $text, $m)) {
+            $header = trim($m[1]);
+            $body = trim(mb_substr($text, mb_strlen($m[1], 'UTF-8'), null, 'UTF-8'));
+            $body = preg_replace('/\A[ \t]*[-=_─━═*~#]{3,}[ \t]*(\r?\n)?/u', '', $body);
             return [$header, $body];
         }
 
-        // Pattern 2: Look for the first double newline (paragraph break) within the first 400 characters
-        if (preg_match('/\A(.*?(\r?\n){2,})/su', $text, $m)) {
-            $header = $m[1];
-            $body   = mb_substr($text, mb_strlen($header, 'UTF-8'), null, 'UTF-8');
+        // 2. Look for the first divider line within first 600 chars
+        if (preg_match('/\A(.*?)(?:\r?\n)[ \t]*[-=_─━═*~#]{3,}[ \t]*(?:\r?\n|$)/su', $text, $m)) {
+            $header = trim($m[1]);
+            $body   = trim(mb_substr($text, mb_strlen($m[0], 'UTF-8'), null, 'UTF-8'));
+            return [$header, $body];
+        }
+
+        // 3. Look for the first double newline (paragraph break) within first 350 chars
+        if (preg_match('/\A(.*?)(?:\r?\n){2,}/su', $text, $m)) {
+            $header = trim($m[1]);
+            $body   = trim(mb_substr($text, mb_strlen($m[0], 'UTF-8'), null, 'UTF-8'));
             return [$header, $body];
         }
 
@@ -91,11 +101,7 @@ class NotificationSender
         foreach ($bodyPieces as $idx => $piece) {
             $partNum = $idx + 1;
             $prefix = "{$partNum}/{$totalParts}\n";
-
-            $chunkHeader = $header;
-            if ($chunkHeader !== '' && !str_ends_with($chunkHeader, "\n")) {
-                $chunkHeader .= "\n";
-            }
+            $chunkHeader = ($header !== '') ? "{$header}\n\n" : "";
 
             $chunks[] = $prefix . $chunkHeader . trim($piece);
         }
