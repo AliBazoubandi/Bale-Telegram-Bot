@@ -1,4 +1,4 @@
--- Migration: add admin_users table to existing databases.
+-- Migration: add admin_users and login_throttles tables to existing databases.
 
 CREATE TABLE IF NOT EXISTS admin_users (
     id            BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -7,4 +7,11 @@ CREATE TABLE IF NOT EXISTS admin_users (
     display_name  VARCHAR(191) NULL,
     created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_admin_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS login_throttles (
+    ip           VARCHAR(45)  NOT NULL PRIMARY KEY,
+    failures     INT UNSIGNED NOT NULL DEFAULT 1,
+    last_attempt DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    locked_until DATETIME     NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

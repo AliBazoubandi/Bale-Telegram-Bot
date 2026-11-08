@@ -23,14 +23,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $db  = Db::conn();
     $now = time();
 
-    // ── Throttle Check: 5 failures within 10 minutes locks the IP ──
-    $stmt = $db->prepare('SELECT failures, (locked_until IS NOT NULL AND locked_until > NOW()) AS is_locked, TIMESTAMPDIFF(SECOND, last_attempt, NOW()) AS age_sec FROM login_throttles WHERE ip = ?');
-    $stmt->bind_param('s', $clientIp);
-    $stmt->execute();
-    $throttle = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+    // ── Self-healing: Ensure login_throttles table exists on existing databases ──
+    try {
+        $db->query("CREATE TABLE IF NOT EXISTS login_throttles (
+            ip           VARCHAR(45)  NOT NULL PRIMARY KEY,
+            failures     INT UNSIGNED NOT NULL DEFAULT 1,
+            last_attempt DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            locked_until DATETIME     NULL DEFAULT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    } catch (Throwable $e) {
+        error_log("Failed ensuring login_throttles table: " . $e->getMessage());
+    }
 
-    $isLocked = ($throttle && (int) $throttle['is_locked'] === 1);
+    // ── Throttle Check: 5 failures within 10 minutes locks the IP ──
+    $throttle = null;
+    $isLocked = false;
+    try {
+        $stmt = $db->prepare('SELECT failures, (locked_until IS NOT NULL AND locked_until > NOW()) AS is_locked, TIMESTAMPDIFF(SECOND, last_attempt, NOW()) AS age_sec FROM login_throttles WHERE ip = ?');
+        if ($stmt) {
+            $stmt->bind_param('s', $clientIp);
+            $stmt->execute();
+            $throttle = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            $isLocked = ($throttle && (int) $throttle['is_locked'] === 1);
+        }
+    } catch (Throwable $e) {
+        error_log("Login throttle check error: " . $e->getMessage());
+    }
 
     if ($isLocked) {
         $error = 'تلاش بیش از حد؛ چند دقیقه بعد دوباره تلاش کنید.';
@@ -55,33 +74,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['admin_username']     = $user['username'];
                 $_SESSION['admin_display_name'] = $user['display_name'] ?: $user['username'];
 
-                // Successful login — clear IP throttle record and session counters
-                $delStmt = $db->prepare('DELETE FROM login_throttles WHERE ip = ?');
-                $delStmt->bind_param('s', $clientIp);
-                $delStmt->execute();
-                $delStmt->close();
+                // Successful login — clear IP throttle record
+                try {
+                    $delStmt = $db->prepare('DELETE FROM login_throttles WHERE ip = ?');
+                    if ($delStmt) {
+                        $delStmt->bind_param('s', $clientIp);
+                        $delStmt->execute();
+                        $delStmt->close();
+                    }
+                } catch (Throwable $e) {
+                    error_log("Login throttle clear error: " . $e->getMessage());
+                }
 
                 header('Location: index.php');
                 exit;
             }
 
             // Record failed attempt for IP throttling
-            $failures = 1;
-            if ($throttle && (int) ($throttle['age_sec'] ?? 9999) < 600 && (int) ($throttle['is_locked'] ?? 0) === 0) {
-                $failures = (int) $throttle['failures'] + 1;
-            }
+            try {
+                $failures = 1;
+                if ($throttle && (int) ($throttle['age_sec'] ?? 9999) < 600 && (int) ($throttle['is_locked'] ?? 0) === 0) {
+                    $failures = (int) $throttle['failures'] + 1;
+                }
 
-            $upStmt = $db->prepare(
-                'INSERT INTO login_throttles (ip, failures, last_attempt, locked_until)
-                 VALUES (?, ?, NOW(), IF(? >= 5, DATE_ADD(NOW(), INTERVAL 10 MINUTE), NULL))
-                 ON DUPLICATE KEY UPDATE
-                     failures = VALUES(failures),
-                     last_attempt = NOW(),
-                     locked_until = IF(VALUES(failures) >= 5, DATE_ADD(NOW(), INTERVAL 10 MINUTE), NULL)'
-            );
-            $upStmt->bind_param('sii', $clientIp, $failures, $failures);
-            $upStmt->execute();
-            $upStmt->close();
+                $upStmt = $db->prepare(
+                    'INSERT INTO login_throttles (ip, failures, last_attempt, locked_until)
+                     VALUES (?, ?, NOW(), IF(? >= 5, DATE_ADD(NOW(), INTERVAL 10 MINUTE), NULL))
+                     ON DUPLICATE KEY UPDATE
+                         failures = VALUES(failures),
+                         last_attempt = NOW(),
+                         locked_until = IF(VALUES(failures) >= 5, DATE_ADD(NOW(), INTERVAL 10 MINUTE), NULL)'
+                );
+                if ($upStmt) {
+                    $upStmt->bind_param('sii', $clientIp, $failures, $failures);
+                    $upStmt->execute();
+                    $upStmt->close();
+                }
+            } catch (Throwable $e) {
+                error_log("Login throttle update error: " . $e->getMessage());
+            }
 
             $error = 'نام کاربری یا رمز عبور نادرست است.';
         }

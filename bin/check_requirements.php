@@ -104,6 +104,7 @@ if ($envExists) {
             'sender_apps'      => 'Sender applications',
             'message_logs'     => 'Message logs & attachments',
             'admin_users'      => 'Admin user credentials',
+            'login_throttles'  => 'Login brute-force protection table',
         ];
         $missingTables = [];
 
