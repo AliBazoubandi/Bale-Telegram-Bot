@@ -80,14 +80,17 @@ abstract class AbstractHttpBotClient implements MessengerClientInterface
 
         $ch = curl_init($this->apiUrl($method));
         
+        $sslVerifyEnv = getenv('CURL_SSL_VERIFY');
+        $verifyPeer = ($sslVerifyEnv === '0' || strtolower((string) $sslVerifyEnv) === 'false') ? false : true;
+
         $curlOptions = [
             CURLOPT_POST           => true,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 30,
             CURLOPT_CONNECTTIMEOUT => 15,
             CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4, // Force IPv4 to prevent 21s IPv6 DNS timeouts on Windows
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_SSL_VERIFYPEER => $verifyPeer,
+            CURLOPT_SSL_VERIFYHOST => $verifyPeer ? 2 : 0,
         ];
 
         // Optional Proxy configuration & CA bundle overrides

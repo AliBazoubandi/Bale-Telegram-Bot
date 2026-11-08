@@ -8,10 +8,90 @@ require_once __DIR__ . '/Messenger/MessengerFactory.php';
  * Sends notifications (text, photos, documents/PDFs) to a contact's linked
  * platforms and logs every attempt in the message_logs table.
  *
+ * Supports automatic chunking for long text messages (> 4000 characters)
+ * and decoupled media sending when captions exceed platform limits (1024 characters).
+ *
  * The preferred platform (if set) is always contacted first.
  */
 class NotificationSender
 {
+    /** Maximum length of a single text message chunk (Telegram/Bale limit is 4096). */
+    public const MAX_MESSAGE_CHUNK_LENGTH = 4000;
+
+    /** Maximum length of a media caption (Telegram/Bale limit is 1024). */
+    public const MAX_CAPTION_LENGTH = 1024;
+
+    /** Delay in microseconds between sequential message chunks (150ms). */
+    private const CHUNK_SEND_DELAY_US = 150000;
+
+    /**
+     * Splits a long text into clean chunks avoiding breaking words or paragraphs.
+     *
+     * @param string $text
+     * @param int    $maxChunkLength
+     * @return array<int, string>
+     */
+    public static function splitMessage(string $text, int $maxChunkLength = self::MAX_MESSAGE_CHUNK_LENGTH): array
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return [];
+        }
+
+        if (mb_strlen($text, 'UTF-8') <= $maxChunkLength) {
+            return [$text];
+        }
+
+        $chunks = [];
+        $remaining = $text;
+
+        while (mb_strlen($remaining, 'UTF-8') > $maxChunkLength) {
+            $candidate = mb_substr($remaining, 0, $maxChunkLength, 'UTF-8');
+            $splitPos = false;
+
+            // Search in candidate for preferred breakpoints (from back to front)
+            // 1. Double line break (paragraphs)
+            $pos = mb_strrpos($candidate, "\n\n", 0, 'UTF-8');
+            if ($pos !== false && $pos >= (int) ($maxChunkLength * 0.4)) {
+                $splitPos = $pos + 2;
+            }
+
+            // 2. Single line break
+            if ($splitPos === false) {
+                $pos = mb_strrpos($candidate, "\n", 0, 'UTF-8');
+                if ($pos !== false && $pos >= (int) ($maxChunkLength * 0.4)) {
+                    $splitPos = $pos + 1;
+                }
+            }
+
+            // 3. Space or punctuation break
+            if ($splitPos === false) {
+                $pos = mb_strrpos($candidate, ' ', 0, 'UTF-8');
+                if ($pos !== false && $pos >= (int) ($maxChunkLength * 0.4)) {
+                    $splitPos = $pos + 1;
+                }
+            }
+
+            // 4. Fallback: hard cut at maximum chunk length
+            if ($splitPos === false) {
+                $splitPos = $maxChunkLength;
+            }
+
+            $chunk = trim(mb_substr($remaining, 0, $splitPos, 'UTF-8'));
+            if ($chunk !== '') {
+                $chunks[] = $chunk;
+            }
+
+            $remaining = ltrim(mb_substr($remaining, $splitPos, null, 'UTF-8'));
+        }
+
+        if ($remaining !== '') {
+            $chunks[] = $remaining;
+        }
+
+        return $chunks;
+    }
+
     /**
      * @param string      $phone          Raw or normalized phone number — local ('0912...'),
      *                                    international ('+98...', '0098...') and already-normalized
@@ -76,15 +156,32 @@ class NotificationSender
         foreach ($channels as $channel) {
             try {
                 $bot = MessengerFactory::make($channel['platform']);
+                $chunksSent = 1;
 
                 if ($attachment !== null) {
-                    if ($normalizedType === 'photo') {
-                        $bot->sendPhoto($channel['chat_id'], $attachment, $finalText);
+                    $textLength = mb_strlen($finalText, 'UTF-8');
+
+                    if ($textLength <= self::MAX_CAPTION_LENGTH) {
+                        // Caption fits within the 1024-char limit
+                        if ($normalizedType === 'photo') {
+                            $bot->sendPhoto($channel['chat_id'], $attachment, $finalText);
+                        } else {
+                            $bot->sendDocument($channel['chat_id'], $attachment, $finalText);
+                        }
                     } else {
-                        $bot->sendDocument($channel['chat_id'], $attachment, $finalText);
+                        // Text exceeds caption limit: send media first, then send full text
+                        if ($normalizedType === 'photo') {
+                            $bot->sendPhoto($channel['chat_id'], $attachment);
+                        } else {
+                            $bot->sendDocument($channel['chat_id'], $attachment);
+                        }
+
+                        // Send full text sequentially (chunking if needed)
+                        $chunksSent = $this->sendChunkedText($bot, $channel['chat_id'], $finalText);
                     }
                 } else {
-                    $bot->sendMessage($channel['chat_id'], $finalText);
+                    // Plain text message (chunked if > 4000 chars)
+                    $chunksSent = $this->sendChunkedText($bot, $channel['chat_id'], $finalText);
                 }
 
                 $this->logMessage(
@@ -95,6 +192,7 @@ class NotificationSender
                 $results[] = [
                     'platform'   => $channel['platform'],
                     'status'     => 'sent',
+                    'chunks'     => $chunksSent,
                     'attachment' => $attachment ? $normalizedType : null,
                     'preferred'  => $channel['platform'] === $preferred,
                 ];
@@ -115,6 +213,32 @@ class NotificationSender
         }
 
         return $results;
+    }
+
+    /**
+     * Sends a text message, automatically splitting it into chunks if it exceeds the limit.
+     *
+     * @param MessengerClientInterface $bot
+     * @param string                   $chatId
+     * @param string                   $text
+     * @return int Number of chunks sent.
+     */
+    private function sendChunkedText(MessengerClientInterface $bot, string $chatId, string $text): int
+    {
+        $chunks = self::splitMessage($text);
+        if (empty($chunks)) {
+            return 0;
+        }
+
+        $total = count($chunks);
+        foreach ($chunks as $idx => $chunk) {
+            $bot->sendMessage($chatId, $chunk);
+            if ($idx + 1 < $total) {
+                usleep(self::CHUNK_SEND_DELAY_US);
+            }
+        }
+
+        return $total;
     }
 
     /**

@@ -7,7 +7,7 @@ echo Compiling Tailwind CSS...
 where npx >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
     echo Using local Node.js / npx...
-    npx -y tailwindcss@4 -i admin/assets/input.css -o admin/assets/tailwind.css
+    npx -y @tailwindcss/cli -i admin/assets/input.css -o admin/assets/tailwind.css
     if %ERRORLEVEL% EQU 0 (
         echo [OK] Compiled successfully to admin/assets/tailwind.css
         exit /b 0
@@ -17,7 +17,7 @@ if %ERRORLEVEL% EQU 0 (
 where docker >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
     echo Using Docker container fallback...
-    docker run --rm -v "%cd%:/app" -w /app node:20-alpine sh -c "npx -y tailwindcss@4 -i admin/assets/input.css -o admin/assets/tailwind.css"
+    docker run --rm -v "%cd%:/app" -w /app node:20-alpine sh -c "npx -y @tailwindcss/cli -i admin/assets/input.css -o admin/assets/tailwind.css"
     exit /b 0
 )
 

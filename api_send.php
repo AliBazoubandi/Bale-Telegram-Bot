@@ -2,6 +2,77 @@
 
 require_once __DIR__ . '/src/bootstrap.php';
 
+// ── SMS Fallback Helper ──────────────────────────────────────────────
+/**
+ * Send an SMS through the internal SMS proxy (used as fallback invitation).
+ */
+function send_sms(string $phone, string $message): array
+{
+    $apiUrl = getenv('SMS_PROXY_URL') ?: 'http://192.168.149.152:8080/send/smsProxy.php';
+    $apiKey = getenv('SMS_PROXY_KEY') ?: 'G361tU3QPXeWKiReorjFcyTD3Mvz3HFGJ8MDjxjtoueW60Y1d';
+
+    $jsonData = json_encode([
+        'phones'  => [$phone],
+        'message' => $message,
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    if ($jsonData === false) {
+        return [
+            'status'    => 'error',
+            'message'   => 'Could not encode SMS request.',
+            'http_code' => 0,
+        ];
+    }
+
+    $ch = curl_init();
+
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $apiUrl,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $jsonData,
+        CURLOPT_HTTPHEADER     => [
+            'X-API-KEY: ' . $apiKey,
+            'Content-Type: application/json',
+            'Accept: application/json',
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_TIMEOUT        => 30,
+        CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
+    ]);
+
+    $response  = curl_exec($ch);
+    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error     = curl_error($ch);
+
+    curl_close($ch);
+
+    if ($response === false || $error !== '') {
+        return [
+            'status'    => 'error',
+            'message'   => $error !== '' ? $error : 'SMS request failed.',
+            'http_code' => $httpCode,
+        ];
+    }
+
+    $decodedResponse = json_decode($response, true);
+
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return [
+            'status'    => 'success',
+            'http_code' => $httpCode,
+            'response'  => $decodedResponse ?? $response,
+        ];
+    }
+
+    return [
+        'status'    => 'error',
+        'message'   => 'SMS HTTP request failed.',
+        'http_code' => $httpCode,
+        'response'  => $decodedResponse ?? $response,
+    ];
+}
+
 // ── Only accept POST ────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -158,6 +229,31 @@ try {
         $attachment,
         $attachmentType
     );
+
+    // If this phone has no linked messenger channel, send an SMS invitation if SMS proxy is configured.
+    $noChannelLinked = false;
+    foreach ($results as $result) {
+        if (($result['status'] ?? '') === 'no_channel_linked') {
+            $noChannelLinked = true;
+            break;
+        }
+    }
+
+    if ($noChannelLinked && !empty(getenv('SMS_PROXY_URL'))) {
+        $invitationMessage = "شما یک پیام از گروه صنعتی رهباریان دارید.\n"
+            . "برای دریافت پیام، لطفاً ربات زیر را در بله فعال کنید:\n"
+            . "https://ble.ir/Rahbarian_Group_bot\n\n"
+            . "با تشکر";
+
+        $smsResult = send_sms((string) $phone, $invitationMessage);
+
+        $results[] = [
+            'platform' => 'sms',
+            'status'   => ($smsResult['status'] ?? '') === 'success' ? 'sent' : 'failed',
+            'purpose'  => 'messenger_invitation',
+            'details'  => $smsResult,
+        ];
+    }
 
     // Consider the call successful if at least one channel was delivered.
     $anySent = false;

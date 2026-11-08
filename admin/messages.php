@@ -75,7 +75,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send_
             }
 
             if ($anySent) {
-                $msg = 'پیام با موفقیت ارسال شد.';
+                $maxChunks = 1;
+                foreach ($results as $r) {
+                    if (!empty($r['chunks']) && $r['chunks'] > $maxChunks) {
+                        $maxChunks = (int) $r['chunks'];
+                    }
+                }
+                $msg = ($maxChunks > 1)
+                    ? "پیام با موفقیت در {$maxChunks} بخش متوالی ارسال شد."
+                    : 'پیام با موفقیت ارسال شد.';
                 $msgType = 'success';
             } else {
                 $msg = 'ارسال پیام ناموفق بود: ' . implode(' | ', $errors);
@@ -451,6 +459,10 @@ ob_start();
                 <textarea id="send_message_text" name="message" rows="3" required
                           placeholder="متن پیام خود را اینجا بنویسید..."
                           class="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition"></textarea>
+                <div class="flex items-center justify-between mt-1 text-[11px] text-gray-400">
+                    <span id="char_counter">۰ کاراکتر</span>
+                    <span id="chunk_hint" class="text-brand font-medium hidden"></span>
+                </div>
             </div>
 
             <div>
@@ -516,6 +528,35 @@ document.getElementById('sendModal')?.addEventListener('click', function(e) {
         closeSendModal();
     }
 });
+
+// Live character counter & auto-chunk hint
+const msgInput = document.getElementById('send_message_text');
+const charCounter = document.getElementById('char_counter');
+const chunkHint = document.getElementById('chunk_hint');
+const fileInput = document.getElementById('send_file');
+const urlInput = document.getElementById('send_attachment_url');
+
+function updateCharCounter() {
+    if (!msgInput || !charCounter) return;
+    const len = msgInput.value.length;
+    charCounter.textContent = len.toLocaleString('fa-IR') + ' کاراکتر';
+
+    const hasAttachment = (fileInput && fileInput.files && fileInput.files.length > 0) || (urlInput && urlInput.value.trim() !== '');
+
+    if (len > 4000) {
+        const chunks = Math.ceil(len / 4000);
+        chunkHint.textContent = '⚡ ارسال خودکار در ' + chunks.toLocaleString('fa-IR') + ' بخش متوالی';
+        chunkHint.classList.remove('hidden');
+    } else if (hasAttachment && len > 1024) {
+        chunkHint.textContent = '📎 ارسال فایل و متن به صورت مستقل';
+        chunkHint.classList.remove('hidden');
+    } else {
+        chunkHint.classList.add('hidden');
+    }
+}
+msgInput?.addEventListener('input', updateCharCounter);
+fileInput?.addEventListener('change', updateCharCounter);
+urlInput?.addEventListener('input', updateCharCounter);
 </script>
 
 <?php

@@ -77,28 +77,35 @@
     </aside>
 
     <!-- Main Content -->
-    <div class="mr-64 min-h-screen">
-        <!-- Top Header -->
-        <header class="bg-white border-b border-gray-100 px-8 py-5 sticky top-0 z-40">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-xl font-bold text-body"><?= htmlspecialchars($pageTitle ?? '') ?></h1>
-                    <?php if (!empty($pageSubtitle)): ?>
-                        <p class="text-sm text-gray-500 mt-0.5"><?= htmlspecialchars($pageSubtitle) ?></p>
-                    <?php endif; ?>
+    <div class="mr-64 min-h-screen flex flex-col justify-between">
+        <div>
+            <!-- Top Header -->
+            <header class="bg-white border-b border-gray-100 px-8 py-5 sticky top-0 z-40">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-xl font-bold text-body"><?= htmlspecialchars($pageTitle ?? '') ?></h1>
+                        <?php if (!empty($pageSubtitle)): ?>
+                            <p class="text-sm text-gray-500 mt-0.5"><?= htmlspecialchars($pageSubtitle) ?></p>
+                        <?php endif; ?>
+                    </div>
+                    <div>
+                        <?php if (!empty($headerAction)): ?>
+                            <?= $headerAction ?>
+                        <?php endif; ?>
+                    </div>
                 </div>
-                <div>
-                    <?php if (!empty($headerAction)): ?>
-                        <?= $headerAction ?>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </header>
+            </header>
 
-        <!-- Page Content -->
-        <main class="p-8">
-            <?= $content ?>
-        </main>
+            <!-- Page Content -->
+            <main class="p-8">
+                <?= $content ?>
+            </main>
+        </div>
+
+        <!-- Footer -->
+        <footer class="py-4 px-8 border-t border-gray-100 bg-white text-center text-xs text-gray-400">
+            ✨ تمام حقوق اين وبسايت مربوط به تیم هوش تجاری رهباریان رابین است. ✨
+        </footer>
     </div>
 
 </body>
